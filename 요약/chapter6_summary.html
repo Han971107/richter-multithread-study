@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>제프리 리처 Windows via C/C++ - 6장 요약</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 30px;
+    background: #f5f5f5;
+    color: #2c3e50;
+    line-height: 1.7;
+  }
+  h1 {
+    color: #1a5490;
+    border-bottom: 3px solid #1a5490;
+    padding-bottom: 10px;
+  }
+  h2 {
+    color: #1a5490;
+    background: #fff;
+    padding: 12px 20px;
+    border-left: 5px solid #1a5490;
+    border-radius: 4px;
+    margin-top: 40px;
+  }
+  h3 {
+    color: #2c5282;
+    margin-top: 25px;
+  }
+  .section {
+    background: #fff;
+    padding: 25px 30px;
+    margin: 20px 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .question {
+    background: #fff3cd;
+    border-left: 5px solid #ffc107;
+    padding: 15px 20px;
+    margin: 10px 0;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .answer-box {
+    background: #e7f5e7;
+    border-left: 5px solid #28a745;
+    padding: 15px 20px;
+    margin: 10px 0;
+    border-radius: 4px;
+  }
+  .warning {
+    background: #f8d7da;
+    border-left: 5px solid #dc3545;
+    padding: 15px 20px;
+    margin: 10px 0;
+    border-radius: 4px;
+  }
+  .info {
+    background: #d1ecf1;
+    border-left: 5px solid #17a2b8;
+    padding: 15px 20px;
+    margin: 10px 0;
+    border-radius: 4px;
+  }
+  .tip {
+    background: #e2e3f3;
+    border-left: 5px solid #6610f2;
+    padding: 15px 20px;
+    margin: 10px 0;
+    border-radius: 4px;
+  }
+  code {
+    background: #2d2d2d;
+    color: #f8f8f2;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #2d2d2d;
+    color: #f8f8f2;
+    padding: 18px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9em;
+    line-height: 1.5;
+  }
+  pre code {
+    background: transparent;
+    padding: 0;
+  }
+  .keyword { color: #ff79c6; }
+  .type { color: #8be9fd; }
+  .comment { color: #6272a4; font-style: italic; }
+  .string { color: #f1fa8c; }
+  .number { color: #bd93f9; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    background: white;
+  }
+  th, td {
+    padding: 10px 12px;
+    text-align: left;
+    border: 1px solid #dee2e6;
+  }
+  th {
+    background: #1a5490;
+    color: white;
+    font-weight: 600;
+  }
+  tr:nth-child(even) { background: #f8f9fa; }
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+    margin-right: 5px;
+  }
+  .badge-good { background: #28a745; color: white; }
+  .badge-bad { background: #dc3545; color: white; }
+  .badge-warn { background: #ffc107; color: #333; }
+  .badge-info { background: #17a2b8; color: white; }
+  .toc {
+    background: #fff;
+    padding: 20px 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+  }
+  .toc ul { list-style: none; padding-left: 0; }
+  .toc li {
+    padding: 6px 0;
+    border-bottom: 1px dashed #e0e0e0;
+  }
+  .toc li:last-child { border-bottom: none; }
+  .toc a {
+    color: #1a5490;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .toc a:hover { text-decoration: underline; }
+  .formula {
+    background: #fff8e1;
+    padding: 12px 18px;
+    border-radius: 4px;
+    font-family: 'Consolas', monospace;
+    margin: 10px 0;
+    border-left: 4px solid #ffa000;
+  }
+  .footer {
+    text-align: center;
+    color: #999;
+    margin-top: 40px;
+    padding: 20px;
+    font-size: 0.9em;
+  }
+</style>
+</head>
+<body>
+
+<h1>제프리 리처 Windows via C/C++ - 6장: Thread Basics 요약</h1>
+
+<div class="toc">
+  <h3 style="margin-top:0;">목차</h3>
+  <ul>
+    <li><a href="#q1">Q1. 프로세스 vs 스레드</a></li>
+    <li><a href="#q2">Q2. 스레드 생성 시 OS가 할당하는 두 가지</a></li>
+    <li><a href="#q3">Q3. CreateThread 매개변수 6개</a></li>
+    <li><a href="#q4">Q4. 스레드 함수 작성 가이드라인 5가지</a></li>
+    <li><a href="#q5">Q5. 스레드 종료 방법 4가지</a></li>
+    <li><a href="#q6">Q6. _beginthreadex vs CreateThread</a></li>
+    <li><a href="#q7">Q7. ExitThread를 C++에서 쓰면 안 되는 이유</a></li>
+    <li><a href="#q8">Q8. 스택 변수의 수명 함정 (Race Condition)</a></li>
+    <li><a href="#q9">Q9. 스레드 종료 시 OS의 정리 작업</a></li>
+    <li><a href="#q10">Q10. 핸들 vs 스레드의 생명주기</a></li>
+    <li><a href="#bonus">보너스: Thread Pool 개념</a></li>
+    <li><a href="#std-thread">std::thread vs CreateThread</a></li>
+    <li><a href="#stack-ownership">심화: 스택 관리의 주체 (OS vs 컴파일러)</a></li>
+  </ul>
+</div>
+
+<!-- Q1 -->
+<div class="section" id="q1">
+  <h2>Q1. 프로세스 vs 스레드</h2>
+
+  <div class="question">프로세스와 스레드의 차이는? 실제로 코드를 실행하는 주체는?</div>
+
+  <div class="answer-box">
+    <strong>핵심 명제:</strong> 프로세스는 게으르다(inert). 실제로 실행하는 것은 항상 <strong>스레드</strong>다.
+  </div>
+
+  <table>
+    <tr><th>구분</th><th>프로세스</th><th>스레드</th></tr>
+    <tr><td>역할</td><td>자원의 컨테이너</td><td>실행의 주체</td></tr>
+    <tr><td>소유물</td><td>가상 주소 공간, 커널 핸들 테이블, 코드/데이터/DLL</td><td>스택, 레지스터 상태(Context)</td></tr>
+    <tr><td>비유</td><td>공장 건물</td><td>공장 노동자</td></tr>
+  </table>
+
+  <h3>중요 명제</h3>
+  <ul>
+    <li>모든 프로세스는 <strong>최소 하나의 스레드</strong>를 가진다 (Primary Thread)</li>
+    <li>프로세스의 <strong>모든 스레드가 종료되면 프로세스도 종료</strong>된다</li>
+    <li>스레드는 프로세스의 자원(주소 공간, 핸들)을 <strong>공유</strong>한다 → 통신은 쉽지만 동기화가 필요</li>
+  </ul>
+</div>
+
+<!-- Q2 -->
+<div class="section" id="q2">
+  <h2>Q2. 스레드 생성 시 OS가 할당하는 두 가지</h2>
+
+  <div class="question">스레드를 만들 때 OS가 반드시 생성하는 두 가지는?</div>
+
+  <table>
+    <tr><th>요소</th><th>위치</th><th>용도</th></tr>
+    <tr>
+      <td><strong>Thread Kernel Object</strong></td>
+      <td>커널 영역</td>
+      <td>OS가 스레드를 관리하기 위한 자료구조<br>(CONTEXT, ID, 종료 코드, 시그널 상태, 사용 카운터 포함)</td>
+    </tr>
+    <tr>
+      <td><strong>Thread Stack</strong></td>
+      <td>프로세스 주소 공간 (유저 영역)</td>
+      <td>함수 호출, 지역 변수 저장<br>기본 크기: <strong>1MB</strong></td>
+    </tr>
+  </table>
+
+  <div class="info">
+    <strong>💡 게임 프로그래머 관점:</strong> 스레드 1000개 만들면 스택만 1GB. 그래서 Thread Pool 패턴을 사용. CONTEXT 복원/저장이 컨텍스트 스위칭 비용.
+  </div>
+
+  <div class="warning">
+    <strong>⚠️ TLS는 정답이 아님:</strong> TLS는 선택적(optional)이고 명시적 할당이 필요. 모든 스레드가 자동으로 받는 것은 <strong>스택</strong>.
+  </div>
+</div>
+
+<!-- Q3 -->
+<div class="section" id="q3">
+  <h2>Q3. CreateThread의 매개변수 6개</h2>
+
+<pre><code><span class="type">HANDLE WINAPI</span> CreateThread(
+    <span class="type">LPSECURITY_ATTRIBUTES</span>   lpThreadAttributes,  <span class="comment">// 1: 보안 (보통 NULL)</span>
+    <span class="type">SIZE_T</span>                  dwStackSize,         <span class="comment">// 2: 스택 크기 (보통 0 = 1MB)</span>
+    <span class="type">LPTHREAD_START_ROUTINE</span>  lpStartAddress,      <span class="comment">// 3: 스레드 함수 포인터 ⭐</span>
+    <span class="type">LPVOID</span>                  lpParameter,         <span class="comment">// 4: 함수 인자 (void*) ⭐</span>
+    <span class="type">DWORD</span>                   dwCreationFlags,     <span class="comment">// 5: 0 또는 CREATE_SUSPENDED</span>
+    <span class="type">LPDWORD</span>                 lpThreadId           <span class="comment">// 6: 스레드 ID 출력 (보통 NULL)</span>
+);</code></pre>
+
+  <h3>매개변수별 핵심</h3>
+  <table>
+    <tr><th>#</th><th>이름</th><th>요점</th></tr>
+    <tr><td>1</td><td>lpThreadAttributes</td><td>거의 항상 <code>NULL</code> (기본 보안)</td></tr>
+    <tr><td>2</td><td>dwStackSize</td><td>거의 항상 <code>0</code> (EXE 헤더 기본값 1MB)</td></tr>
+    <tr><td><strong>3</strong></td><td>lpStartAddress</td><td><strong>스레드 함수 포인터</strong>. 시그니처는 <code>DWORD WINAPI Func(LPVOID)</code></td></tr>
+    <tr><td><strong>4</strong></td><td>lpParameter</td><td><strong>함수에 전달할 데이터</strong>. <code>void*</code> 하나만 가능</td></tr>
+    <tr><td>5</td><td>dwCreationFlags</td><td><code>0</code> 또는 <code>CREATE_SUSPENDED</code> (실행 보류)</td></tr>
+    <tr><td>6</td><td>lpThreadId</td><td>거의 항상 <code>NULL</code></td></tr>
+  </table>
+
+  <h3>매개변수가 1개뿐인 이유와 해결책</h3>
+  <div class="info">
+    <strong>LPVOID 1개만 가능하지만, void*이므로 구조체 포인터로 묶어 넘기면 사실상 무제한.</strong>
+  </div>
+
+<pre><code><span class="keyword">struct</span> ThreadParams {
+    <span class="type">int</span> id;
+    <span class="keyword">const</span> <span class="type">char</span>* name;
+    <span class="type">float</span> speed;
+};
+
+<span class="type">DWORD WINAPI</span> MyThreadFunc(<span class="type">LPVOID</span> lpParam) {
+    ThreadParams* p = (ThreadParams*)lpParam;  <span class="comment">// 캐스팅</span>
+    <span class="comment">// ... 사용 ...</span>
+    <span class="keyword">delete</span> p;  <span class="comment">// ⚠️ 동적 할당 시 해제 책임</span>
+    <span class="keyword">return</span> <span class="number">0</span>;
+}</code></pre>
+
+  <h3>CREATE_SUSPENDED 활용 (게임 프로그래머 필수)</h3>
+<pre><code><span class="type">HANDLE</span> h = CreateThread(<span class="type">NULL</span>, <span class="number">0</span>, ThreadFunc, param,
+                          CREATE_SUSPENDED, <span class="type">NULL</span>);  <span class="comment">// 일시 정지로 생성</span>
+SetThreadPriority(h, THREAD_PRIORITY_HIGHEST);  <span class="comment">// 우선순위 설정</span>
+SetThreadAffinityMask(h, <span class="number">0x01</span>);                <span class="comment">// 코어 친화성 설정</span>
+ResumeThread(h);                                <span class="comment">// 이제 실행 시작</span></code></pre>
+</div>
+
+<!-- Q4 -->
+<div class="section" id="q4">
+  <h2>Q4. 스레드 함수 작성 가이드라인 5가지</h2>
+
+  <div class="question">ThreadFunc를 작성할 때 반드시 지켜야 할 5가지는?</div>
+
+  <table>
+    <tr><th>#</th><th>가이드라인</th><th>위반 시 결과</th></tr>
+    <tr>
+      <td>1</td>
+      <td><code>DWORD WINAPI Func(LPVOID)</code> 시그니처 준수</td>
+      <td>호출 규약 불일치로 스택 오염 → 크래시</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>전역/정적 변수 사용 최소화</td>
+      <td>여러 스레드가 공유 → 데이터 경쟁</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>LPVOID 캐스팅으로 매개변수 사용</td>
+      <td>타입 안전성 직접 책임</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>예외는 스레드 함수 내에서 처리</td>
+      <td>처리 안 하면 프로세스 전체 종료</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>CRT 사용 시 <code>_beginthreadex</code> 권장</td>
+      <td>CRT 스레드별 데이터 누수</td>
+    </tr>
+  </table>
+
+  <h3>올바른 스레드 함수 예시</h3>
+<pre><code><span class="type">DWORD WINAPI</span> ThreadFunc(<span class="type">LPVOID</span> lpParam) {
+    <span class="keyword">try</span> {
+        Params* p = (Params*)lpParam;  <span class="comment">// 3. 캐스팅</span>
+        <span class="type">int</span> localData = p-&gt;value;     <span class="comment">// 2. 지역 변수 우선</span>
+        DoWork(localData);
+    }
+    <span class="keyword">catch</span> (std::exception&amp; e) {     <span class="comment">// 4. 예외 처리</span>
+        <span class="keyword">return</span> <span class="number">1</span>;
+    }
+    <span class="keyword">return</span> <span class="number">0</span>;
+}</code></pre>
+</div>
+
+<!-- Q5 -->
+<div class="section" id="q5">
+  <h2>Q5. 스레드 종료 방법 4가지</h2>
+
+  <table>
+    <tr><th>#</th><th>방법</th><th>평가</th><th>설명</th></tr>
+    <tr>
+      <td>1</td>
+      <td><strong>스레드 함수 return</strong></td>
+      <td><span class="badge badge-good">권장</span></td>
+      <td>모든 자원이 정상 정리되는 유일한 방법</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><code>ExitThread()</code></td>
+      <td><span class="badge badge-warn">비권장</span></td>
+      <td>C++ 객체 소멸자 호출 안 됨 (자살)</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><code>TerminateThread()</code></td>
+      <td><span class="badge badge-bad">절대 금지</span></td>
+      <td>스택 미해제, 데드락 가능 (타살)</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>프로세스 종료</td>
+      <td><span class="badge badge-bad">비권장</span></td>
+      <td>모든 스레드 강제 종료</td>
+    </tr>
+  </table>
+
+  <div class="warning">
+    <strong>🚫 TerminateThread가 절대 금지인 이유:</strong>
+    <ul>
+      <li><strong>C++ 객체 소멸자가 호출되지 않음</strong> (가장 큰 문제)</li>
+      <li>DLL_THREAD_DETACH 통지 없음</li>
+      <li>임계 영역(Critical Section) 안에서 죽으면 락이 영원히 잠김 → <strong>데드락</strong></li>
+      <li>비동기 함수 — 진짜 종료됐는지 보장 못 함</li>
+      <li>(구버전 Windows / 리처 책 시점) 스택 메모리도 해제 안 됨 — 모던 Windows에선 OS가 해제하지만, 위 문제들은 여전함</li>
+    </ul>
+  </div>
+
+  <div class="info">
+    <strong>📌 가장 위험한 것은 메모리 누수가 아니라 <span style="color:#dc3545;">데드락</span>:</strong>
+    스레드가 락을 쥔 상태에서 TerminateThread 당하면 그 락은 영원히 안 풀린다. 다른 스레드들이 그 락을 기다리면서 멈춤 → 게임 멈춤.
+  </div>
+
+  <h3>외부에서 스레드를 어떻게 종료시키나? — 협력적 종료 패턴</h3>
+<pre><code>std::atomic&lt;<span class="type">bool</span>&gt; g_shouldStop = <span class="keyword">false</span>;
+
+<span class="type">DWORD WINAPI</span> WorkerThread(<span class="type">LPVOID</span>) {
+    <span class="keyword">while</span> (!g_shouldStop) {       <span class="comment">// 매 반복마다 체크</span>
+        DoWork();
+    }
+    <span class="keyword">return</span> <span class="number">0</span>;                    <span class="comment">// 자연 종료</span>
+}
+
+<span class="comment">// 메인에서</span>
+g_shouldStop = <span class="keyword">true</span>;                 <span class="comment">// 신호만 보냄</span>
+WaitForSingleObject(h, INFINITE);    <span class="comment">// 깔끔하게 끝날 때까지 대기</span>
+CloseHandle(h);</code></pre>
+</div>
+
+<!-- Q6 -->
+<div class="section" id="q6">
+  <h2>Q6. _beginthreadex vs CreateThread</h2>
+
+  <div class="question">두 함수의 차이는? 왜 _beginthreadex를 권장하나?</div>
+
+  <h3>핵심 차이: CRT 스레드별 데이터 (_tiddata)</h3>
+
+  <table>
+    <tr><th>CRT 함수</th><th>스레드별 데이터</th></tr>
+    <tr><td><code>errno</code></td><td>에러 코드</td></tr>
+    <tr><td><code>strtok</code>, <code>wcstok</code></td><td>토큰 파싱 상태</td></tr>
+    <tr><td><code>asctime</code>, <code>gmtime</code></td><td>정적 버퍼</td></tr>
+    <tr><td><code>rand</code></td><td>난수 시드</td></tr>
+  </table>
+
+  <h3>동작 차이</h3>
+
+  <div class="answer-box">
+    <strong>_beginthreadex:</strong>
+    <ol>
+      <li>_tiddata 블록 할당</li>
+      <li>스레드 TLS 슬롯에 연결</li>
+      <li>CreateThread 호출</li>
+      <li>스레드 종료 시 _endthreadex가 _tiddata 자동 해제 ✅</li>
+    </ol>
+  </div>
+
+  <div class="warning">
+    <strong>CreateThread:</strong>
+    <ol>
+      <li>스레드만 생성</li>
+      <li>CRT 함수 호출 시 즉석에서 _tiddata 만듦</li>
+      <li>종료 시 _endthreadex 안 불림 → <strong>_tiddata 메모리 누수</strong></li>
+    </ol>
+  </div>
+
+  <h3>한 줄 결론</h3>
+  <div class="formula">
+    CRT 함수를 쓴다면 항상 <code>_beginthreadex</code>를 써라. CreateThread는 잊어라.
+  </div>
+
+  <div class="info">
+    <strong>참고:</strong> <code>std::thread</code>는 내부적으로 <code>_beginthreadex</code>를 사용하므로 이 문제가 자동 해결됨.
+  </div>
+</div>
+
+<!-- Q7 -->
+<div class="section" id="q7">
+  <h2>Q7. ExitThread를 C++에서 쓰면 안 되는 이유</h2>
+
+  <div class="answer-box">
+    <strong>한 줄 요약:</strong> OS 커널 자원은 정리되지만, <strong>C++ 객체 소멸자가 호출되지 않아 자원 누수</strong> 발생.
+  </div>
+
+  <h3>왜?</h3>
+  <ul>
+    <li>OS는 C++ 언어를 모름. 시스템 콜만 처리</li>
+    <li>소멸자 호출은 컴파일러가 생성한 코드</li>
+    <li>함수가 <code>return</code>으로 끝나야 컴파일러 생성 정리 코드가 실행됨</li>
+    <li><code>ExitThread</code>는 함수 중간에 강제 점프 → 정리 코드 건너뜀</li>
+  </ul>
+
+<pre><code><span class="type">DWORD WINAPI</span> ThreadFunc(<span class="type">LPVOID</span>) {
+    std::vector&lt;<span class="type">int</span>&gt; data(<span class="number">10000</span>);   <span class="comment">// 힙 할당</span>
+    std::ofstream file(<span class="string">"a.txt"</span>);    <span class="comment">// 파일 핸들</span>
+    std::lock_guard lock(g_mutex);  <span class="comment">// 뮤텍스 락</span>
+
+    ExitThread(<span class="number">0</span>);  <span class="comment">// 💥 여기서 점프</span>
+    <span class="comment">// data 소멸자 X → 메모리 누수</span>
+    <span class="comment">// file 소멸자 X → 파일 핸들 누수</span>
+    <span class="comment">// lock 소멸자 X → 뮤텍스 영원히 잠김 (데드락!)</span>
+}</code></pre>
+</div>
+
+<!-- Q8 -->
+<div class="section" id="q8">
+  <h2>Q8. 스택 변수의 수명 함정 (Race Condition)</h2>
+
+  <div class="question">다음 코드의 문제점은?</div>
+
+<pre><code><span class="type">DWORD WINAPI</span> ThreadFunc(<span class="type">PVOID</span> pvParam) {
+    <span class="type">int</span> n = *(<span class="type">int</span>*)pvParam;
+    printf(<span class="string">"%d\n"</span>, n);
+    <span class="keyword">return</span> <span class="number">0</span>;
+}
+
+<span class="type">void</span> StartThread() {
+    <span class="type">int</span> value = <span class="number">42</span>;
+    CreateThread(<span class="type">NULL</span>, <span class="number">0</span>, ThreadFunc, &amp;value, <span class="number">0</span>, <span class="type">NULL</span>);
+}  <span class="comment">// ← StartThread 종료, value 사라짐</span></code></pre>
+
+  <h3>핵심 원리</h3>
+  <ol>
+    <li><strong>CreateThread는 논블로킹 (non-blocking)</strong> — 즉시 반환</li>
+    <li>새 스레드 실행 시점은 <strong>OS 스케줄러가 결정</strong> (예측 불가)</li>
+    <li><code>value</code>는 스택 변수 → StartThread 종료 시 사라짐</li>
+    <li>ThreadFunc가 늦게 실행되면 <strong>쓰레기 값 참조</strong></li>
+  </ol>
+
+  <div class="warning">
+    <strong>⚠️ 가장 무서운 점: 재현이 안 됨</strong><br>
+    개발/QA에선 잘 돌다가, 출시 후 사용자 PC에서 가끔 크래시. 디버깅 지옥의 전형적인 패턴.
+  </div>
+
+  <h3>해결책</h3>
+
+  <h4>방법 1: 힙 할당 (가장 흔함)</h4>
+<pre><code><span class="type">void</span> StartThread() {
+    <span class="type">int</span>* value = <span class="keyword">new</span> <span class="type">int</span>(<span class="number">42</span>);
+    CreateThread(<span class="type">NULL</span>, <span class="number">0</span>, ThreadFunc, value, <span class="number">0</span>, <span class="type">NULL</span>);
+}
+
+<span class="type">DWORD WINAPI</span> ThreadFunc(<span class="type">PVOID</span> pvParam) {
+    <span class="type">int</span>* p = (<span class="type">int</span>*)pvParam;
+    printf(<span class="string">"%d\n"</span>, *p);
+    <span class="keyword">delete</span> p;  <span class="comment">// 스레드가 정리 책임</span>
+    <span class="keyword">return</span> <span class="number">0</span>;
+}</code></pre>
+
+  <h4>방법 2: 값 자체를 포인터로 전달 (작은 데이터만)</h4>
+<pre><code>CreateThread(<span class="type">NULL</span>, <span class="number">0</span>, ThreadFunc,
+             (<span class="type">LPVOID</span>)(<span class="type">intptr_t</span>)value,  <span class="comment">// 값을 포인터로 위장</span>
+             <span class="number">0</span>, <span class="type">NULL</span>);</code></pre>
+
+  <h4>방법 3: WaitForSingleObject로 대기</h4>
+<pre><code><span class="type">int</span> value = <span class="number">42</span>;
+<span class="type">HANDLE</span> h = CreateThread(<span class="type">NULL</span>, <span class="number">0</span>, ThreadFunc, &amp;value, <span class="number">0</span>, <span class="type">NULL</span>);
+WaitForSingleObject(h, INFINITE);  <span class="comment">// 끝날 때까지 value 살아있음</span>
+CloseHandle(h);</code></pre>
+
+  <div class="tip">
+    <strong>💡 게임 프로그래머 원칙:</strong> 스레드에 넘기는 데이터는 그 스레드가 끝날 때까지 살아있어야 한다. 스택 변수는 거의 항상 잘못된 선택.
+  </div>
+</div>
+
+<!-- Q9 -->
+<div class="section" id="q9">
+  <h2>Q9. 스레드 종료 시 OS의 정리 작업</h2>
+
+  <div class="question">스레드가 return으로 종료될 때, OS가 수행하는 작업들은?</div>
+
+  <h3>OS가 수행하는 7가지 작업</h3>
+  <table>
+    <tr><th>#</th><th>작업</th><th>설명</th></tr>
+    <tr><td>1</td><td>C++ 객체 소멸자 실행</td><td>스택에 있는 객체들의 소멸자가 역순으로 호출</td></tr>
+    <tr><td>2</td><td>스택 메모리 해제</td><td>1MB 가상 메모리 반환 (TerminateThread는 이거 안 함)</td></tr>
+    <tr><td>3</td><td>종료 코드 저장</td><td>STILL_ACTIVE → 반환값(예: 0)으로 변경</td></tr>
+    <tr><td>4</td><td>커널 오브젝트 시그널 상태로</td><td>nonsignaled → signaled (WaitForSingleObject가 풀림)</td></tr>
+    <tr><td>5</td><td>사용 카운트 1 감소</td><td>아직 0이 아닐 수 있음 (HANDLE 참조 남아있음)</td></tr>
+    <tr><td>6</td><td>DLL_THREAD_DETACH 통지</td><td>사용 중이던 DLL들에 종료 알림</td></tr>
+    <tr><td>7</td><td>마지막 스레드면 프로세스 종료</td><td>프로세스의 모든 스레드 죽으면 프로세스도 죽음</td></tr>
+  </table>
+
+  <div class="info">
+    <strong>💡 비유로 기억:</strong> "<strong>몸은 정리하지만, 이름표는 남긴다</strong>" — 스택과 자원은 즉시 정리되지만, 커널 오브젝트는 HANDLE 참조가 다 닫혀야 사라짐.
+  </div>
+</div>
+
+<!-- Q10 -->
+<div class="section" id="q10">
+  <h2>Q10. 핸들 vs 스레드의 생명주기</h2>
+
+  <div class="question">CloseHandle로 핸들을 닫으면 스레드는 종료되나?</div>
+
+  <div class="answer-box">
+    <strong>답: 아니다.</strong> 핸들과 스레드는 별개의 생명주기를 가진다.
+  </div>
+
+  <h3>사용 카운트 추적</h3>
+<pre><code><span class="type">HANDLE</span> h = CreateThread(...);
+<span class="comment">// 사용 카운트 = 2 (스레드 자신 + HANDLE)</span>
+
+CloseHandle(h);
+<span class="comment">// 사용 카운트 = 1 (HANDLE만 -1)</span>
+<span class="comment">// 스레드는 여전히 실행 중!</span>
+
+<span class="comment">// ... 스레드 함수 종료 ...</span>
+<span class="comment">// 사용 카운트 = 0 → 커널 오브젝트 파괴</span></code></pre>
+
+  <h3>네 가지 생명주기 정리</h3>
+  <table>
+    <tr><th>관점</th><th>생명주기</th></tr>
+    <tr><td>스레드 실행 자체</td><td>함수 시작 ~ return/ExitThread/TerminateThread</td></tr>
+    <tr><td>스택 메모리</td><td>스레드 실행 동안만</td></tr>
+    <tr><td>스레드 커널 오브젝트</td><td>CreateThread ~ 마지막 핸들이 닫힐 때</td></tr>
+    <tr><td>HANDLE</td><td>CreateThread ~ CloseHandle</td></tr>
+  </table>
+
+  <h3>"Fire and forget" 패턴</h3>
+<pre><code><span class="comment">// 종료 코드에 관심 없을 때 흔히 쓰는 패턴</span>
+<span class="type">HANDLE</span> h = CreateThread(<span class="type">NULL</span>, <span class="number">0</span>, BackgroundTask, <span class="type">NULL</span>, <span class="number">0</span>, <span class="type">NULL</span>);
+CloseHandle(h);  <span class="comment">// 즉시 닫음, 스레드는 백그라운드 실행</span></code></pre>
+
+  <div class="warning">
+    <strong>⚠️ 흔한 실수:</strong> CloseHandle 빼먹으면 커널 오브젝트가 영원히 메모리에 남음 → <strong>핸들 누수</strong>. 게임처럼 스레드를 자주 만들면 누적됨.
+  </div>
+</div>
+
+<!-- Bonus -->
+<div class="section" id="bonus">
+  <h2>보너스: Thread Pool 개념</h2>
+
+  <h3>왜 필요한가?</h3>
+  <ul>
+    <li>스레드 생성/소멸 비용: 커널 오브젝트 + 1MB 스택 할당 + 컨텍스트 초기화</li>
+    <li>스레드 1000개 만들면 메모리 1GB + 컨텍스트 스위칭 폭발</li>
+    <li>해결: <strong>코어 수만큼 스레드 미리 만들고, while 루프로 작업을 계속 처리</strong></li>
+  </ul>
+
+  <h3>핵심 코드 (단순화)</h3>
+<pre><code><span class="type">void</span> WorkerThread() {
+    <span class="keyword">while</span> (running) {              <span class="comment">// ← 핵심: while 루프</span>
+        Job job = jobQueue.Pop();
+        job.Execute();              <span class="comment">// 작업 끝나도 스레드는 안 죽음</span>
+    }                                <span class="comment">// running = false 되어야 종료</span>
+}</code></pre>
+
+  <h3>게임 엔진의 Job System</h3>
+  <table>
+    <tr><th>엔진</th><th>시스템</th></tr>
+    <tr><td>Unreal</td><td>TaskGraph System</td></tr>
+    <tr><td>Unity</td><td>C# Job System + Burst</td></tr>
+    <tr><td>Naughty Dog</td><td>Fiber-based Job System</td></tr>
+    <tr><td>id Tech 6 (Doom 2016)</td><td>자체 Job System</td></tr>
+  </table>
+</div>
+
+<!-- std::thread comparison -->
+<div class="section" id="std-thread">
+  <h2>std::thread vs CreateThread</h2>
+
+  <table>
+    <tr><th>기능</th><th>CreateThread (Win32)</th><th>std::thread (C++11)</th></tr>
+    <tr><td>플랫폼</td><td>Windows 전용</td><td>크로스 플랫폼</td></tr>
+    <tr><td>매개변수 개수</td><td>1개 (void*)</td><td>가변 인자 (템플릿)</td></tr>
+    <tr><td>타입 안전성</td><td>없음 (캐스팅)</td><td>있음</td></tr>
+    <tr><td>RAII</td><td>없음 (수동 CloseHandle)</td><td>있음</td></tr>
+    <tr><td>우선순위/Affinity</td><td>쉬움</td><td>native_handle() 필요</td></tr>
+    <tr><td>CREATE_SUSPENDED</td><td>가능</td><td>불가능</td></tr>
+  </table>
+
+  <div class="tip">
+    <strong>게임 프로그래머 결론:</strong>
+    <ul>
+      <li>일반 게임 코드는 <code>std::thread</code></li>
+      <li>엔진 코어/성능 critical 부분은 <code>CreateThread</code> 또는 <code>_beginthreadex</code></li>
+      <li><code>std::thread</code>의 <code>native_handle()</code>로 Win32 API 직접 사용 가능</li>
+      <li><strong>둘 다 알아야 함</strong></li>
+    </ul>
+  </div>
+</div>
+
+<!-- 스택 관리 주체 -->
+<div class="section" id="stack-ownership">
+  <h2>🔧 심화: 스택 관리의 주체는 OS인가 컴파일러인가?</h2>
+
+  <div class="question">"스택을 정리하는 주체"는 누구인가? 두 층위로 나눠 봐야 함.</div>
+
+  <h3>스택에는 두 가지 층위가 있다</h3>
+
+  <table>
+    <tr><th>층위</th><th>관리 주체</th><th>설명</th></tr>
+    <tr>
+      <td><strong>1. 스택 가상 메모리 영역 (1MB)</strong></td>
+      <td><strong>OS 커널</strong></td>
+      <td>CreateThread 시 예약(Reserve), 종료 시 해제(Release).<br>VirtualAlloc/VirtualFree 메커니즘. 컴파일러는 존재조차 모름.</td>
+    </tr>
+    <tr>
+      <td><strong>2. 스택 프레임 + C++ 객체 소멸자</strong></td>
+      <td><strong>컴파일러</strong></td>
+      <td>함수 프롤로그/에필로그(rsp 조작), 객체 생성자/소멸자 호출 코드 삽입.<br>OS가 마련해준 영역 위에서 "가구를 배치"하는 셈.</td>
+    </tr>
+  </table>
+
+  <h3>호텔 비유</h3>
+  <table>
+    <tr><th>실제</th><th>비유</th></tr>
+    <tr><td>OS</td><td>호텔 (건물 자체 관리)</td></tr>
+    <tr><td>컴파일러</td><td>투숙객 (방 안 가구 배치)</td></tr>
+    <tr><td>함수 호출/반환</td><td>입실/퇴실 (프롤로그/에필로그)</td></tr>
+    <tr><td>스레드 종료</td><td>호텔 폐업 (건물 철거 = 영역 회수)</td></tr>
+  </table>
+
+  <h3>TerminateThread가 문제인 진짜 이유 (정정)</h3>
+
+  <table>
+    <tr><th>#</th><th>문제</th><th>스킵되는 책임 영역</th></tr>
+    <tr><td>1</td><td>C++ 객체 소멸자 호출 안 됨</td><td><strong>컴파일러가 생성한 정리 코드 스킵</strong></td></tr>
+    <tr><td>2</td><td>DLL_THREAD_DETACH 통지 없음</td><td>OS 정리 일부 스킵</td></tr>
+    <tr><td>3</td><td>임계 영역 락이 안 풀림 (데드락)</td><td>1번의 결과</td></tr>
+    <tr><td>4</td><td>(구버전 한정) 스택 메모리 해제 안 됨</td><td>OS 정리 스킵 (모던 Windows에선 해결됨)</td></tr>
+  </table>
+
+  <div class="warning">
+    <strong>⚠️ 이전 노트 정정:</strong><br>
+    "TerminateThread → 스택 해제 안 됨 → 메모리 누수"는 리처 책 시절(Windows XP 이전) 기준. 모던 Windows에선 OS가 스택은 해제함. 하지만 <strong>C++ 객체 소멸자가 호출되지 않는 것</strong>은 모든 버전에서 동일하며, 그것이 데드락과 누수의 진짜 원인.
+  </div>
+
+  <div class="tip">
+    <strong>💡 책을 보는 시각:</strong><br>
+    리처 책은 2007년 기준. 모든 내용이 현재 Windows에 100% 맞지는 않음. 책을 읽을 때 "이게 OS 책임인가 컴파일러 책임인가?"를 따지는 사고가 시스템 프로그래머의 핵심 사고방식.
+  </div>
+</div>
+
+<!-- 핵심 암기 -->
+<div class="section">
+  <h2>🎯 면접 대비 핵심 암기 사항</h2>
+
+  <ol>
+    <li><strong>프로세스 = 자원 컨테이너, 스레드 = 실행 주체</strong></li>
+    <li>스레드 생성 시 자동 할당: <strong>커널 오브젝트 + 스택(1MB)</strong></li>
+    <li>CreateThread 매개변수 6개: 보안, 스택 크기, <strong>함수 포인터</strong>, <strong>인자</strong>, 플래그, ID</li>
+    <li>스레드 함수 시그니처: <code>DWORD WINAPI Func(LPVOID)</code></li>
+    <li>종료 방법: <strong>return 권장</strong>, ExitThread 비권장, <strong>TerminateThread 절대 금지</strong></li>
+    <li>CRT 사용 시 <code>_beginthreadex</code> (또는 <code>std::thread</code>)</li>
+    <li>스레드 함수에 스택 변수 주소 넘기지 마라 (race condition)</li>
+    <li>CloseHandle ≠ 스레드 종료. 핸들과 스레드는 별개 생명주기</li>
+    <li>외부에서 스레드 종료: <strong>플래그 + 협력적 종료 패턴</strong></li>
+    <li>게임에서는 Thread Pool로 재사용</li>
+  </ol>
+</div>
+
+<div class="footer">
+  학습일: 2026-05-28 ~ 2026-05-29<br>
+  교재: 제프리 리처 - Windows via C/C++ (5판)<br>
+  6장 Thread Basics 요약
+</div>
+
+</body>
+</html>
