@@ -4,46 +4,65 @@
 
 using namespace std;
 
+long g_counter = 0;
+
+LONG MyAtomicAdd(LONG volatile* p, LONG value)
+{
+    LONG oldVal, newVal;
+    do {
+        oldVal = *p;
+        newVal = oldVal + value;
+    } while (InterlockedCompareExchange(p, newVal, oldVal) != oldVal);
+
+    return oldVal;
+}
+
 unsigned __stdcall ThreadProc(void* lpParameter)
 {
-    int sum = 0;
-    for (int i = 1; i <= 100; ++i) {
-        sum += i;
+    //cout << "I am Thread " << (int)(intptr_t)(lpParameter) << endl;
+    for (int i = 0; i < 1000000; ++i) {
+        MyAtomicAdd(&g_counter, 1);
     }
-    return sum;
+
+    return 0;
 }
 
 int main()
 {
-    cout << "[Main] Creating thread..." << endl;
+    constexpr int threadCount = 4;
 
-    HANDLE h = (HANDLE)_beginthreadex(NULL, 0, ThreadProc, 0, 0, NULL);
-    if (h == 0) {
-        cout << "Failed creating thread..." << endl;
-        cout << GetLastError() << endl;
-        return -1;
+    HANDLE handles[threadCount] = {};
+
+    int createdThread = 0;
+    for (int i = 0; i < threadCount; ++i) {
+
+        handles[i] = (HANDLE)_beginthreadex(NULL, 0, ThreadProc, (void*)(intptr_t)(i + 1), 0, NULL);
+
+        if (handles[i] == 0) {
+            cout << "Failed creating thread..." << endl;
+            cout << GetLastError() << endl;
+            return -1;
+        }
+
+        ++createdThread;
     }
 
-    cout << "[Main] Waiting for thread..." << endl;
-
-    DWORD res = ::WaitForSingleObject(h, INFINITE);
+    DWORD res = ::WaitForMultipleObjects(createdThread, handles, TRUE, INFINITE);
     if (res == WAIT_FAILED) {
         cout << "[Main] Wait failed: " << GetLastError() << endl;
-        ::CloseHandle(h);
+
+        for (int i = 0; i < createdThread; ++i) {
+            ::CloseHandle(handles[i]);
+        }
+
         return -1;
     }
 
-    DWORD exitCode = 0;
-    if (!::GetExitCodeThread(h, &exitCode)) {
-        cout << "[Main] GetExitCodeThread failed: " << GetLastError() << endl;
-        ::CloseHandle(h);
-        return -1;
+    for (int i = 0; i < createdThread; ++i) {
+        ::CloseHandle(handles[i]);
     }
-    cout << "[Main] result = " << exitCode << endl;
 
-    ::CloseHandle(h);
-
-    cout << "[Main] Thread finished. Bye!" << endl;
+    cout << g_counter << endl;
 
     return 0;
 }
