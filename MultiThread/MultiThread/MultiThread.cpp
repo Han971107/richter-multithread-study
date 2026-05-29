@@ -1,50 +1,47 @@
 ﻿#include <Windows.h>
+#include <process.h>
 #include <iostream>
 
 using namespace std;
 
-DWORD WINAPI ThreadProc(LPVOID lpParameter)
+unsigned __stdcall ThreadProc(void* lpParameter)
 {
-    int id = (int)(intptr_t)lpParameter;
-    cout << "[Worker" << " " << id << "] " << "I am thread number " << id << endl;
-    return 0;
+    int sum = 0;
+    for (int i = 1; i <= 100; ++i) {
+        sum += i;
+    }
+    return sum;
 }
 
 int main()
 {
-    constexpr int THREAD_COUNT = 3;
+    cout << "[Main] Creating thread..." << endl;
 
-    cout << "[Main] Creating " << THREAD_COUNT << " threads..." << endl;
-
-    HANDLE handles[THREAD_COUNT] = {};
-    
-    int createdCount = 0;
-    for (int i = 0; i < THREAD_COUNT; ++i) {
-
-        handles[i] = ::CreateThread(NULL, 0, ThreadProc, (LPVOID)(intptr_t)(i + 1), 0, NULL);
-
-        if (handles[i] == NULL) {
-            cout << "[Main] CreateThread failed at index " << i << endl;
-            break;  // 루프 탈출
-        }
-
-        createdCount++;
+    HANDLE h = (HANDLE)_beginthreadex(NULL, 0, ThreadProc, 0, 0, NULL);
+    if (h == 0) {
+        cout << "Failed creating thread..." << endl;
+        cout << GetLastError() << endl;
+        return -1;
     }
 
     cout << "[Main] Waiting for thread..." << endl;
 
-    DWORD res = ::WaitForMultipleObjects(createdCount, handles, TRUE, INFINITE);
+    DWORD res = ::WaitForSingleObject(h, INFINITE);
     if (res == WAIT_FAILED) {
         cout << "[Main] Wait failed: " << GetLastError() << endl;
-        for (int i = 0; i < createdCount; ++i) {
-            ::CloseHandle(handles[i]);
-        }
+        ::CloseHandle(h);
         return -1;
     }
 
-    for (int i = 0; i < createdCount; ++i) {
-        ::CloseHandle(handles[i]);
+    DWORD exitCode = 0;
+    if (!::GetExitCodeThread(h, &exitCode)) {
+        cout << "[Main] GetExitCodeThread failed: " << GetLastError() << endl;
+        ::CloseHandle(h);
+        return -1;
     }
+    cout << "[Main] result = " << exitCode << endl;
+
+    ::CloseHandle(h);
 
     cout << "[Main] Thread finished. Bye!" << endl;
 
