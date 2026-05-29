@@ -4,24 +4,22 @@
 
 using namespace std;
 
-long g_counter = 0;
+struct Stats {
+    LONG sum;    // 합
+    LONG count;  // 개수
+};
 
-LONG MyAtomicAdd(LONG volatile* p, LONG value)
-{
-    LONG oldVal, newVal;
-    do {
-        oldVal = *p;
-        newVal = oldVal + value;
-    } while (InterlockedCompareExchange(p, newVal, oldVal) != oldVal);
-
-    return oldVal;
-}
+Stats g_stats = { 0, 0 };
+CRITICAL_SECTION g_cs;
 
 unsigned __stdcall ThreadProc(void* lpParameter)
 {
-    //cout << "I am Thread " << (int)(intptr_t)(lpParameter) << endl;
     for (int i = 0; i < 1000000; ++i) {
-        MyAtomicAdd(&g_counter, 1);
+        int value = rand() % 100 + 1;     // 락 밖
+        EnterCriticalSection(&g_cs);
+        g_stats.sum += value;             // 락 안
+        g_stats.count++;                  // 락 안
+        LeaveCriticalSection(&g_cs);
     }
 
     return 0;
@@ -29,6 +27,9 @@ unsigned __stdcall ThreadProc(void* lpParameter)
 
 int main()
 {
+    srand((unsigned)time(NULL));        
+    InitializeCriticalSection(&g_cs);
+
     constexpr int threadCount = 4;
 
     HANDLE handles[threadCount] = {};
@@ -62,7 +63,11 @@ int main()
         ::CloseHandle(handles[i]);
     }
 
-    cout << g_counter << endl;
+    DeleteCriticalSection(&g_cs);
+
+    cout << "count = " << g_stats.count << endl;
+    cout << "sum = " << g_stats.sum << endl;
+    cout << "avg = " << (g_stats.sum / g_stats.count) << endl;
 
     return 0;
 }
