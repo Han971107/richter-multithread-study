@@ -188,14 +188,14 @@
 <div class="info" style="margin-bottom: 25px;">
   <strong>진행 상황</strong>
   <div class="progress">
-    <div class="progress-bar" style="width: 60%;">섹션 3/5 완료 → 섹션 4 시작</div>
+    <div class="progress-bar" style="width: 100%;">섹션 5/5 완료 → 종합 Q&amp;A</div>
   </div>
   <ul style="margin: 8px 0 0 0;">
     <li><span class="badge badge-good">✓</span> 섹션 1. Race Condition · 캐시 라인 · volatile</li>
     <li><span class="badge badge-good">✓</span> 섹션 2. Interlocked 계열 (CAS 보너스 실습 포함)</li>
     <li><span class="badge badge-good">✓</span> 섹션 3. Critical Section + 데드락 심화</li>
-    <li><span class="badge badge-warn">▶</span> 섹션 4. SRWLOCK (다음)</li>
-    <li>섹션 5. Condition Variable</li>
+    <li><span class="badge badge-good">✓</span> 섹션 4. SRWLOCK</li>
+    <li><span class="badge badge-good">✓</span> 섹션 5. Condition Variable</li>
     <li>종합 Q&A + 과제 3개</li>
   </ul>
 </div>
@@ -224,6 +224,19 @@
     <li><a href="#s3-4">3-4. 흔한 실수 5가지</a></li>
     <li><a href="#s3-ex">3-5. 미니 실습: Stats 보호</a></li>
     <li><a href="#s3-quiz">3-6. 퀴즈 Q-a/b/c + 복합 불변식 인사이트</a></li>
+    <li><a href="#s4-1">4-1. SRWLOCK의 핵심 아이디어</a></li>
+    <li><a href="#s4-2">4-2. 사용법 — 함수 6개</a></li>
+    <li><a href="#s4-3">4-3. CS vs SRWLOCK 비교</a></li>
+    <li><a href="#s4-4">4-4. 읽기 락 → 쓰기 락 업그레이드 금지</a></li>
+    <li><a href="#s4-5">4-5. 게임 엔진 맥락</a></li>
+    <li><a href="#s4-ex">4-6. 미니 실습: 자산 핸들 테이블</a></li>
+    <li><a href="#s4-quiz">4-7. 퀴즈 Q-a/b/c</a></li>
+    <li><a href="#s5-1">5-1. Condition Variable이 필요한 이유</a></li>
+    <li><a href="#s5-2">5-2. API + SleepConditionVariable 내부 동작</a></li>
+    <li><a href="#s5-3">5-3. 반드시 while 루프 — Spurious Wakeup + ||/&amp;&amp; 함정</a></li>
+    <li><a href="#s5-4">5-4. Wake vs WakeAll</a></li>
+    <li><a href="#s5-ex">5-5. 미니 실습: Job Queue</a></li>
+    <li><a href="#s5-quiz">5-6. 퀴즈 Q-a/b/c</a></li>
   </ul>
 </div>
 
@@ -1125,9 +1138,420 @@ InterlockedIncrement(&amp;g_stats.count);</code></pre>
   </ul>
 </div>
 
+<!-- ============================== 섹션 4 ============================== -->
+<h2 style="color:#fff; background:#1a5490; padding:18px 24px; border-left:none; border-radius:6px;">
+  섹션 4 · SRWLOCK — Slim Reader-Writer Lock
+</h2>
+
+<div class="section" id="s4-1">
+  <h2>4-1. 왜 SRWLOCK이 필요한가</h2>
+  <div class="answer-box">
+    <strong>CS의 약점:</strong> 모든 스레드를 동등하게 직렬화. 읽기만 하는 100개 스레드도 한 번에 1개만 들여보냄. 읽기는 RMW가 아니라 동시에 해도 데이터 손상 없는데 비효율적.
+  </div>
+<pre><code><span class="comment">// CS 방식 — 읽기만 해도 직렬화</span>
+EnterCriticalSection(&amp;g_cs);
+<span class="type">int</span> v = g_config.value;
+LeaveCriticalSection(&amp;g_cs);</code></pre>
+
+  <h3>SRWLOCK의 핵심 아이디어</h3>
+  <div class="info" style="font-size:1.1em; text-align:center;">
+    <strong>"읽기는 여러 명 동시에, 쓰기는 단독으로."</strong>
+  </div>
+  <table>
+    <tr><th>시점</th><th>상황</th><th>허용</th></tr>
+    <tr><td>T1</td><td>Reader A, B, C 진입</td><td>✅ 동시 진입</td></tr>
+    <tr><td>T2</td><td>Writer X 진입 시도</td><td>A,B,C 끝날 때까지 대기</td></tr>
+    <tr><td>T3</td><td>Writer X 단독 작업</td><td>✅ 단독 진입</td></tr>
+    <tr><td>T4</td><td>Reader들 재진입</td><td>✅ 다시 동시</td></tr>
+  </table>
+  <div class="tip">
+    <strong>쓰기 대기 중이면 새 읽기 요청도 대기</strong> — Reader starvation 방지.
+  </div>
+</div>
+
+<div class="section" id="s4-2">
+  <h2>4-2. 사용법 — 함수 6개</h2>
+<pre><code><span class="type">SRWLOCK</span> g_lock;
+InitializeSRWLock(&amp;g_lock);   <span class="comment">// Delete 함수 없음 — 자동 정리</span>
+
+<span class="comment">// 쓰기 (exclusive)</span>
+AcquireSRWLockExclusive(&amp;g_lock);
+g_config.value = newValue;
+ReleaseSRWLockExclusive(&amp;g_lock);
+
+<span class="comment">// 읽기 (shared)</span>
+AcquireSRWLockShared(&amp;g_lock);
+<span class="type">int</span> v = g_config.value;
+ReleaseSRWLockShared(&amp;g_lock);
+
+<span class="comment">// 비차단 변형 (실패 시 즉시 반환)</span>
+TryAcquireSRWLockExclusive(&amp;g_lock);
+TryAcquireSRWLockShared(&amp;g_lock);</code></pre>
+</div>
+
+<div class="section" id="s4-3">
+  <h2>4-3. CS vs SRWLOCK 비교</h2>
+  <table>
+    <tr><th>기준</th><th>CRITICAL_SECTION</th><th>SRWLOCK</th></tr>
+    <tr><td>정리</td><td>Delete 필요</td><td>불필요</td></tr>
+    <tr><td>재귀(reentrant)</td><td>✅ 가능</td><td>❌ 불가</td></tr>
+    <tr><td>읽기 동시성</td><td>❌ 직렬화</td><td>✅ 동시 진입</td></tr>
+    <tr><td>무경합 비용</td><td>~25 ns</td><td>~15 ns</td></tr>
+    <tr><td>메모리 크기</td><td>~40 바이트</td><td>8 바이트</td></tr>
+    <tr><td>지원 OS</td><td>거의 모든</td><td>Vista 이상</td></tr>
+  </table>
+  <div class="tip">
+    <strong>현대 Windows 코드의 디폴트는 SRWLOCK.</strong> "재귀 안 쓰는 한 SRWLOCK 우선." <code>std::shared_mutex</code>가 내부적으로 SRWLOCK을 씁니다.
+  </div>
+  <div class="info">
+    <strong>선택 기준:</strong>
+    <ul style="margin:0;">
+      <li>읽기 &gt;&gt; 쓰기 (9:1 이상) → SRWLOCK 압승</li>
+      <li>읽기 ≈ 쓰기 위주 → 비슷하거나 소폭 SRWLOCK 우세</li>
+      <li>재귀 호출 필요 → CS만 가능</li>
+    </ul>
+  </div>
+</div>
+
+<div class="section" id="s4-4">
+  <h2>4-4. 절대 금지 — 읽기 락 → 쓰기 락 업그레이드</h2>
+<pre><code><span class="comment">// ❌ 데드락 — 절대 금지</span>
+AcquireSRWLockShared(&amp;g_lock);
+<span class="type">int</span> v = g_config.value;
+<span class="keyword">if</span> (v == <span class="number">0</span>) {
+    AcquireSRWLockExclusive(&amp;g_lock);  <span class="comment">// 자기 자신과 self-deadlock</span>
+    g_config.value = <span class="number">1</span>;
+    ReleaseSRWLockExclusive(&amp;g_lock);
+}
+ReleaseSRWLockShared(&amp;g_lock);</code></pre>
+  <div class="warning">
+    같은 스레드가 읽기 락을 잡은 채로 쓰기 락 요청 → SRWLOCK은 "현재 읽기 락 보유자가 다 나갈 때까지" 대기 → 자기 자신이 읽기 락을 들고 있으니 <strong>영원히 대기 = self-deadlock.</strong>
+  </div>
+  <h3>올바른 패턴 — 놓고, 다시 잡고, 재검사</h3>
+<pre><code><span class="comment">// ✅ 올바른 패턴</span>
+AcquireSRWLockShared(&amp;g_lock);
+<span class="type">int</span> v = g_config.value;
+ReleaseSRWLockShared(&amp;g_lock);          <span class="comment">// 먼저 놓고</span>
+
+<span class="keyword">if</span> (v == <span class="number">0</span>) {
+    AcquireSRWLockExclusive(&amp;g_lock);
+    <span class="keyword">if</span> (g_config.value == <span class="number">0</span>) {          <span class="comment">// 재검사 필수 — 사이에 다른 스레드가 바꿨을 수 있음</span>
+        g_config.value = <span class="number">1</span>;
+    }
+    ReleaseSRWLockExclusive(&amp;g_lock);
+}</code></pre>
+  <div class="tip">
+    이 "놓고 → 다시 잡고 → 재검사" 패턴은 동시성 라이브러리 디자인의 단골. Double-Checked Locking의 사촌.
+  </div>
+</div>
+
+<div class="section" id="s4-5">
+  <h2>4-5. 게임 엔진 맥락 — read-heavy 자료구조</h2>
+  <table>
+    <tr><th>자료구조</th><th>읽기</th><th>쓰기</th></tr>
+    <tr><td>자산 핸들 테이블</td><td>매 프레임 수천 번 lookup</td><td>로딩 시점에만</td></tr>
+    <tr><td>설정(Config)</td><td>매 프레임 수천 번</td><td>메뉴 조작 시만</td></tr>
+    <tr><td>씬 그래프</td><td>매 프레임 전체 순회</td><td>오브젝트 추가/제거 시만</td></tr>
+    <tr><td>네트워크 세션 테이블</td><td>패킷 라우팅마다</td><td>세션 추가/제거 시만</td></tr>
+  </table>
+  <div class="warning">
+    <strong>SRWLOCK이 의미 없는 경우:</strong> 큐(매번 push/pop = 쓰기 위주), 카운터(Interlocked가 적합), 매우 짧은 임계 영역(CS와 비용 차이 미미).
+  </div>
+</div>
+
+<div class="section" id="s4-ex">
+  <h2>4-6. 미니 실습 — 자산 핸들 테이블</h2>
+  <div class="info">
+    <strong>시나리오:</strong> Writer 1개(로딩, Sleep(10) × 100회) + Reader 9개(매 iter lookup). Writer 완료 후 Reader 종료.
+  </div>
+<pre><code><span class="type">SRWLOCK</span> g_lock;
+map&lt;<span class="type">int</span>, string&gt; g_assets;
+<span class="type">LONG</span> g_writerDone = <span class="number">0</span>;
+<span class="type">LONG</span> g_successCount = <span class="number">0</span>;
+
+<span class="type">unsigned</span> __stdcall WriterThreadProc(<span class="type">void</span>*) {
+    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="number">100</span>; ++i) {
+        <span class="type">int</span> id = rand() % <span class="number">100</span> + <span class="number">1</span>;
+        AcquireSRWLockExclusive(&amp;g_lock);
+        g_assets.insert(make_pair(id, to_string(id)));
+        ReleaseSRWLockExclusive(&amp;g_lock);
+        Sleep(<span class="number">10</span>);                          <span class="comment">// 락 밖에서 Sleep</span>
+    }
+    InterlockedExchange(&amp;g_writerDone, <span class="number">1</span>);  <span class="comment">// 루프 끝난 후</span>
+    <span class="keyword">return</span> <span class="number">0</span>;
+}
+
+<span class="type">unsigned</span> __stdcall ReaderThreadProc(<span class="type">void</span>*) {
+    <span class="keyword">while</span> (g_writerDone == <span class="number">0</span>) {
+        <span class="type">int</span> id = rand() % <span class="number">100</span> + <span class="number">1</span>;
+        AcquireSRWLockShared(&amp;g_lock);
+        <span class="keyword">auto</span> iter = g_assets.find(id);
+        ReleaseSRWLockShared(&amp;g_lock);
+        <span class="keyword">if</span> (iter != g_assets.end())
+            InterlockedIncrement(&amp;g_successCount);  <span class="comment">// 락 밖에서</span>
+    }
+    <span class="keyword">return</span> <span class="number">0</span>;
+}</code></pre>
+  <div class="answer-box">
+    <strong>결과:</strong> 총 데이터 수 ~65 / 성공 횟수 ~410만<br>
+    데이터 수 ~65: 100회 삽입, ID 1~100 중복 무시 → 수학적 기댓값 ~63개. 정상.<br>
+    성공 횟수 410만: Writer Sleep(10)×100 = 약 1초 동안 Reader 9개가 락 경합 거의 없이 풀 스피드. <strong>SRWLOCK shared 동시성이 그대로 보임.</strong>
+  </div>
+
+  <h3>초기 작성 시 발생한 버그 2개</h3>
+  <div class="warning">
+    <strong>버그 1 (치명적):</strong> <code>InterlockedExchange(&amp;g_writerDone, 1)</code>을 for 루프 안 + 락 안에 넣음 → i=0 첫 반복에서 바로 writerDone=1 → Reader들 즉시 탈출 → successCount 8~9.<br><br>
+    <strong>버그 2 (설계):</strong> <code>Sleep(10)</code>을 Exclusive 락 안에 넣음 → 10ms 동안 Reader 9개 전부 블로킹 → SRWLOCK 존재 의미 소멸.<br><br>
+    <strong>공통 교훈:</strong> "임계 영역 짧게, Sleep/IO 금지"는 SRWLOCK에서도 동일하게 적용. 개념을 알아도 코드 짤 때 적용이 한 박자 늦어지는 전형적 패턴.
+  </div>
+</div>
+
+<div class="section" id="s4-quiz">
+  <h2>4-7. 퀴즈 Q-a/b/c</h2>
+
+  <div class="question">Q-a. Writer가 매우 잦아지면(100번 → 10,000번 + Sleep(0)) SRWLOCK이 CS보다 빠를까?</div>
+  <div class="tip"><strong>나의 답:</strong> 모르겠다</div>
+  <div class="answer-box">
+    <strong>아니오, 오히려 CS보다 느릴 수 있음.</strong> Writer가 Exclusive를 자주 잡으면 Reader들이 결국 직렬화 → SRWLOCK의 "공유 읽기" 이점 소멸. 게다가 SRWLOCK은 내부적으로 Reader 수를 카운팅해 CS보다 상태 관리가 복잡 → 오버헤드가 손익분기를 넘어 CS보다 느려질 수 있음.<br><br>
+    <strong>SRWLOCK은 read &gt;&gt; write일 때만 압승. Write 비율이 높아질수록 CS와 비슷해지거나 뒤집힘.</strong>
+  </div>
+
+  <div class="question">Q-b. Reader 락 안에서 실수로 g_assets[id] = name처럼 쓰기를 하면?</div>
+  <div class="tip"><strong>나의 답:</strong> 크래시. operator[]는 없는 키면 삽입+생성. 여러 Reader가 동시에 트리를 수정하면 재할당/크래시. → <span class="badge badge-good">정답</span></div>
+  <div class="answer-box">
+    <strong>보강:</strong> map은 red-black tree. <code>operator[]</code>는 non-const — 키 없으면 노드 삽입 + 트리 rebalance. 여러 Reader가 shared 락으로 동시에 트리를 순회하는 중에 한 명이 트리 구조를 변경 → data race → UB → crash. "재할당"보다 정확히는 <strong>트리 재구성 중 포인터를 동시에 읽어서</strong> 터지는 것.
+  </div>
+
+  <div class="question">Q-c. SRWLOCK이 재귀를 지원하지 않는 이유?</div>
+  <div class="tip"><strong>나의 답:</strong> 모르겠다</div>
+  <div class="answer-box">
+    SRWLOCK 내부는 <strong>8바이트 정수 1개</strong>. Reader 수, Writer 대기 여부 등을 비트 필드로 인코딩. <strong>소유한 스레드 ID를 저장할 공간이 없음.</strong><br><br>
+    CS는 소유 스레드 ID를 별도 필드에 기록 → "같은 스레드가 다시 들어왔네" 감지 가능. SRWLOCK은 그걸 의도적으로 넣지 않아 8바이트 유지. <strong>크기와 단순성을 위한 의도적 트레이드오프.</strong>
+  </div>
+</div>
+
+<div class="section" style="background:#1a5490; color:#fff;">
+  <h2 style="color:#fff; background:transparent; border-left:none; padding-left:0;">섹션 4 정리</h2>
+  <ul>
+    <li>SRWLOCK = "읽기는 동시에, 쓰기는 단독으로" — CS의 읽기 직렬화 약점 해결</li>
+    <li>함수 6개, 8바이트, Delete 불필요. 무경합 ~15ns (CS보다 빠름)</li>
+    <li>재귀 불가 — 소유 스레드 ID 저장 공간 없음 (의도적 설계)</li>
+    <li><strong>shared → exclusive 업그레이드 절대 금지</strong> — self-deadlock</li>
+    <li>올바른 패턴: 읽기 락 놓고 → 다시 쓰기 락 잡고 → <strong>재검사</strong></li>
+    <li>read &gt;&gt; write 비율일 때만 SRWLOCK 압승. Write 잦아지면 CS와 비슷하거나 역전</li>
+    <li>임계 영역 짧게 + Sleep/IO 락 밖 — CS와 동일한 규칙 적용</li>
+  </ul>
+</div>
+
+<!-- ============================== 섹션 5 ============================== -->
+<h2 style="color:#fff; background:#1a5490; padding:18px 24px; border-left:none; border-radius:6px;">
+  섹션 5 · Condition Variable — 조건 변수
+</h2>
+
+<div class="section" id="s5-1">
+  <h2>5-1. 왜 Condition Variable이 필요한가</h2>
+  <div class="answer-box">
+    <strong>CS/SRWLOCK의 공통 한계:</strong> "조건이 충족될 때까지 기다리기"를 효율적으로 못 함.
+  </div>
+<pre><code><span class="comment">// 나쁜 방법 — Busy-waiting: CPU 100% 낭비</span>
+<span class="keyword">while</span> (queue.empty()) { }
+
+<span class="comment">// Sleep 끼워도 근본 해결 아님 — 1ms마다 깨어나 확인하는 낭비</span>
+<span class="keyword">while</span> (queue.empty()) { Sleep(<span class="number">1</span>); }</code></pre>
+  <div class="info">
+    <strong>원하는 동작:</strong> "조건이 안 됐으면 잠들어 있다가, 조건이 바뀌면 그때 깨워줘."<br>
+    Condition Variable이 이걸 합니다.
+  </div>
+  <div class="tip">
+    <strong>세 가지 요소가 항상 세트:</strong>
+    <ol style="margin:0;">
+      <li><strong>락(CS 또는 SRWLOCK)</strong> — 조건을 보호</li>
+      <li><strong>조건 변수</strong> — 잠들고/깨어나는 신호</li>
+      <li><strong>조건 자체</strong> — 내가 기다리는 상태 (<code>!queue.empty()</code> 같은 것)</li>
+    </ol>
+  </div>
+</div>
+
+<div class="section" id="s5-2">
+  <h2>5-2. API</h2>
+<pre><code><span class="type">CONDITION_VARIABLE</span> g_cv;
+InitializeConditionVariable(&amp;g_cv);   <span class="comment">// Delete 없음</span>
+
+<span class="comment">// 잠들기 — CS 버전 (락을 원자적으로 놓고 잠듦)</span>
+SleepConditionVariableCS(&amp;g_cv, &amp;g_cs, INFINITE);
+
+<span class="comment">// 잠들기 — SRWLOCK 버전</span>
+SleepConditionVariableSRW(&amp;g_cv, &amp;g_lock, INFINITE, <span class="number">0</span>);                               <span class="comment">// exclusive</span>
+SleepConditionVariableSRW(&amp;g_cv, &amp;g_lock, INFINITE, CONDITION_VARIABLE_LOCKMODE_SHARED); <span class="comment">// shared</span>
+
+<span class="comment">// 깨우기</span>
+WakeConditionVariable(&amp;g_cv);     <span class="comment">// 대기 중인 스레드 1개</span>
+WakeAllConditionVariable(&amp;g_cv);  <span class="comment">// 대기 중인 모든 스레드</span></code></pre>
+
+  <h3>SleepConditionVariable의 핵심 동작</h3>
+  <div class="warning">
+    <code>SleepConditionVariableCS</code>는 <strong>락을 원자적으로 놓고 잠듭니다.</strong> 그냥 Sleep()과 다른 이유. 깨어나면 자동으로 락을 다시 잡고 돌아옴.<br><br>
+    "락 잡은 채로 자면 Producer가 어떻게 락을 잡냐?" → Sleep이 락을 놓고 자기 때문에 가능.
+  </div>
+<pre><code>Worker: EnterCriticalSection    <span class="comment">// 락 잡음</span>
+Worker: SleepConditionVariableCS <span class="comment">// 락 놓고 + 잠듦 (원자적)</span>
+                  <span class="comment">↑ 이 틈에 Main이 락 잡고 push 가능</span>
+Main:   EnterCriticalSection → push → LeaveCriticalSection
+Main:   WakeConditionVariable   <span class="comment">// Worker 깨움</span>
+Worker: 깨어남 + 락 자동 재획득 → while 조건 재확인</code></pre>
+</div>
+
+<div class="section" id="s5-3">
+  <h2>5-3. 반드시 while 루프 — Spurious Wakeup</h2>
+  <div class="warning">
+    <strong>허위 깨어남(spurious wakeup):</strong> 아무도 깨우지 않았는데 스레드가 깨어날 수 있음. OS/하드웨어 수준의 특성으로 피할 수 없음.
+  </div>
+<pre><code><span class="comment">// ❌ if 쓰면 안 됨 — spurious wakeup 시 queue가 여전히 비어있을 수 있음</span>
+<span class="keyword">if</span> (queue.empty()) {
+    SleepConditionVariableCS(&amp;g_cv, &amp;g_cs, INFINITE);
+}
+queue.front(); queue.pop();  <span class="comment">// ← 빈 큐에서 접근 → crash</span>
+
+<span class="comment">// ✅ while 써야 함 — 깨어날 때마다 조건 재확인</span>
+<span class="keyword">while</span> (queue.empty()) {
+    SleepConditionVariableCS(&amp;g_cv, &amp;g_cs, INFINITE);
+}
+queue.front(); queue.pop();  <span class="comment">// 여기 오면 반드시 데이터 있음</span></code></pre>
+  <div class="tip"><strong>규칙: Condition Variable 대기는 항상 while 루프.</strong></div>
+
+  <h3>while 탈출 조건 — ||와 &&의 함정</h3>
+  <div class="info">
+    while은 조건이 <strong>false가 되는 순간 탈출</strong>. 드모르간 법칙으로 따져야 함.
+  </div>
+  <table>
+    <tr><th>조건</th><th>탈출하려면</th><th>결과</th></tr>
+    <tr>
+      <td><code>while (A || B)</code></td>
+      <td>A도 false <strong>AND</strong> B도 false여야 탈출</td>
+      <td>❌ 둘 다 false여야 → 탈출 어려움</td>
+    </tr>
+    <tr>
+      <td><code>while (A &amp;&amp; B)</code></td>
+      <td>A false <strong>OR</strong> B false면 탈출</td>
+      <td>✅ 하나만 false여도 → 탈출 쉬움</td>
+    </tr>
+  </table>
+  <div class="warning">
+    <strong>실수 사례:</strong> <code>while (g_jobs.empty() || !g_shutdown)</code> → 탈출하려면 "큐에 뭔가 있음 AND shutdown=true" 둘 다 동시에 만족해야 함. job이 들어와도 shutdown 전이면 탈출 불가 → 영원히 hang.<br><br>
+    <strong>올바른 코드:</strong> <code>while (g_jobs.empty() &amp;&amp; !g_shutdown)</code> → 큐에 뭔가 있거나 OR shutdown이면 탈출.
+  </div>
+</div>
+
+<div class="section" id="s5-4">
+  <h2>5-4. Wake vs WakeAll</h2>
+  <table>
+    <tr><th></th><th>WakeConditionVariable</th><th>WakeAllConditionVariable</th></tr>
+    <tr><td>깨우는 수</td><td>1개</td><td>전체</td></tr>
+    <tr><td>언제</td><td>작업 1개 → 소비자 1개면 충분</td><td>조건이 여러 스레드에 동시 해당될 때</td></tr>
+    <tr><td>주의</td><td>누가 깨어날지 모름</td><td>Thundering herd — 다 깨어나 경합, 1개만 진행</td></tr>
+  </table>
+  <div class="tip">
+    게임 엔진 Job System: 작업 1개 추가 → <code>Wake</code> / 시스템 종료 → <code>WakeAll</code> (모든 워커 깨워서 종료 처리)
+  </div>
+</div>
+
+<div class="section" id="s5-5">
+  <h2>5-5. 게임 엔진 맥락</h2>
+  <table>
+    <tr><th>패턴</th><th>설명</th></tr>
+    <tr><td>Job Queue</td><td>메인이 작업 push → Wake → 워커가 처리</td></tr>
+    <tr><td>프레임 동기화</td><td>렌더 스레드가 "프레임 준비됨" 신호 대기</td></tr>
+    <tr><td>자원 로딩 완료</td><td>로딩 스레드 완료 후 게임 스레드 깨우기</td></tr>
+    <tr><td>스레드 풀</td><td>작업 없으면 잠들고, 생기면 깨어남</td></tr>
+  </table>
+</div>
+
+<div class="section" id="s5-ex">
+  <h2>5-6. 미니 실습 — Job Queue</h2>
+<pre><code><span class="type">CRITICAL_SECTION</span> g_cs;
+<span class="type">CONDITION_VARIABLE</span> g_cv;
+queue&lt;<span class="type">int</span>&gt; g_jobs;
+<span class="type">bool</span> g_shutdown = <span class="keyword">false</span>;
+<span class="type">LONG</span> g_processedCount = <span class="number">0</span>;
+
+<span class="type">unsigned</span> __stdcall WorkerThreadProc(<span class="type">void</span>*) {
+    <span class="keyword">while</span> (<span class="keyword">true</span>) {
+        EnterCriticalSection(&amp;g_cs);
+        <span class="keyword">while</span> (g_jobs.empty() &amp;&amp; !g_shutdown) {    <span class="comment">// &&: 하나만 false여도 탈출</span>
+            SleepConditionVariableCS(&amp;g_cv, &amp;g_cs, INFINITE);
+        }
+        <span class="keyword">if</span> (g_jobs.empty()) {                       <span class="comment">// shutdown + 큐 비어있음 = 종료</span>
+            LeaveCriticalSection(&amp;g_cs);
+            <span class="keyword">break</span>;
+        }
+        g_jobs.pop();
+        LeaveCriticalSection(&amp;g_cs);
+        InterlockedIncrement(&amp;g_processedCount);  <span class="comment">// 처리는 락 밖</span>
+    }
+    <span class="keyword">return</span> <span class="number">0</span>;
+}
+
+<span class="comment">// Main: 1~1000 push → shutdown + WakeAll</span>
+<span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; <span class="number">1000</span>; ++i) {
+    EnterCriticalSection(&amp;g_cs);
+    g_jobs.push(i + <span class="number">1</span>);
+    LeaveCriticalSection(&amp;g_cs);
+    WakeConditionVariable(&amp;g_cv);
+}
+g_shutdown = <span class="keyword">true</span>;
+WakeAllConditionVariable(&amp;g_cv);   <span class="comment">// 잠든 Worker들 깨워서 종료 처리</span></code></pre>
+
+  <div class="answer-box">
+    <strong>결과:</strong> g_processedCount = 1000 (1~1000 전부 처리)
+  </div>
+
+  <h3>발생한 버그 2개</h3>
+  <div class="warning">
+    <strong>버그 1 — 내부 while 조건에 || 사용:</strong><br>
+    <code>while (g_jobs.empty() || !g_shutdown)</code> → 탈출 조건이 "큐 비지 않음 AND shutdown=true" 둘 다 동시에 만족해야 함. job이 들어와도 shutdown 전이면 탈출 불가 → 영원히 hang.<br><br>
+    <strong>버그 2 — g_shutdown=true 후 WakeAll 없음 (1차 코드):</strong><br>
+    Worker들이 잠든 채로 아무도 안 깨움 → WaitForMultipleObjects에서 Main 영원히 대기 → hang.
+  </div>
+</div>
+
+<div class="section" id="s5-quiz">
+  <h2>5-7. 퀴즈 Q-a/b/c</h2>
+
+  <div class="question">Q-a. WakeConditionVariable → WakeAllConditionVariable로 바꾸면?</div>
+  <div class="tip"><strong>나의 답:</strong> 결과 동일, 성능 저하 → <span class="badge badge-good">정답</span></div>
+  <div class="answer-box">
+    processedCount = 1000으로 동일. 단 매 push마다 Worker 4개가 전부 깨어나 락 경합 후 1개만 처리, 나머지 3개는 다시 잠듦 = <strong>Thundering herd</strong>. 불필요한 컨텍스트 스위치 × 3배.
+  </div>
+
+  <div class="question">Q-b. while 대신 if를 쓰면?</div>
+  <div class="tip"><strong>나의 답:</strong> Spurious wakeup 대비 불가, crash → <span class="badge badge-good">정답</span></div>
+  <div class="answer-box">
+    Spurious wakeup 시 큐가 비어있는데 if면 그냥 통과 → pop() 시도 → 빈 큐 접근 → UB → crash.
+  </div>
+
+  <div class="question">Q-c. g_shutdown=true 후 WakeAllConditionVariable 안 부르면?</div>
+  <div class="tip"><strong>나의 답:</strong> 모르겠다 → <span class="badge badge-info">버그 2번이 바로 이 케이스</span></div>
+  <div class="answer-box">
+    Worker들이 내부 while에서 잠든 채로 아무도 안 깨워줌 → shutdown 신호를 영영 못 봄 → WaitForMultipleObjects에서 Main 영원히 대기 = <strong>hang</strong>. WakeAll이 "종료 신호를 잠든 스레드들에게 전달하는" 역할.
+  </div>
+</div>
+
+<div class="section" style="background:#1a5490; color:#fff;">
+  <h2 style="color:#fff; background:transparent; border-left:none; padding-left:0;">섹션 5 정리</h2>
+  <ul>
+    <li>CV = "조건 안 되면 잠들고, 조건 바뀌면 깨워줘" — Busy-waiting 제거</li>
+    <li>락 + 조건변수 + 조건 세 가지가 항상 세트</li>
+    <li><strong>SleepConditionVariable = 락을 원자적으로 놓고 잠듦</strong>. 깨어나면 자동 재획득</li>
+    <li><strong>대기는 항상 while</strong> — Spurious wakeup 방어</li>
+    <li>while 안 || vs && : while은 false에서 탈출. ||는 둘 다 false여야, &&는 하나만 false여도 탈출</li>
+    <li>Wake = 1개, WakeAll = 전체. 종료 신호는 WakeAll</li>
+    <li>shutdown 후 반드시 WakeAll — 잠든 스레드들이 신호를 받아야 종료 가능</li>
+  </ul>
+</div>
+
 <div class="footer">
-  Chapter 8 — 섹션 1, 2, 3 완료 + 데드락 심화 + 캐시/store buffer/MESI 심화 복습 — 다음: 섹션 4 SRWLOCK<br>
-  마지막 업데이트: 2026-05-30
+  Chapter 8 — 섹션 1~5 완료 + 데드락 심화 + 캐시/store buffer/MESI 심화 복습 — 다음: 종합 Q&amp;A<br>
+  마지막 업데이트: 2026-06-06
 </div>
 
 </body>
