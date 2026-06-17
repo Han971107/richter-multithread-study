@@ -317,6 +317,20 @@
   <div class="warning">
     <strong>⚠️ 면접 함정:</strong> Java/C#의 <code>volatile</code>은 acquire/release 시맨틱 있음. <strong>C/C++의 <code>volatile</code>은 그게 아니다.</strong>
   </div>
+
+  <div class="warning">
+    <strong>⚠️ 흔한 오해: "volatile = RAM에서 직접 읽는다"</strong><br><br>
+    volatile은 <strong>컴파일러</strong>에게 하는 말: "이 값을 레지스터에 박아두고 재사용하지 말고, 매번 load 명령어를 내라."<br>
+    그 load 명령어가 CPU에 전달된 이후는 volatile이 관여하지 못한다. L1에서 가져올지 RAM에서 가져올지는 <strong>CPU 하드웨어</strong>가 결정한다.
+    <table style="margin-top:10px; color:#2c3e50;">
+      <tr><th>계층</th><th>설명</th></tr>
+      <tr><td>컴파일러가 보는 세계</td><td>레지스터 | 메모리 (캐시+RAM 통틀어서)</td></tr>
+      <tr><td>하드웨어 실제 구조</td><td>레지스터 | L1 | L2 | L3 | RAM</td></tr>
+      <tr><td>volatile이 바꾸는 것</td><td>레지스터 재사용 금지 → 매번 load 명령어 생성 (컴파일러 레벨)</td></tr>
+      <tr><td>volatile이 못 하는 것</td><td>그 load가 L1에서 오는지 RAM에서 오는지 — CPU가 결정, volatile 무관</td></tr>
+    </table>
+    <strong>정확한 표현: "volatile = 레지스터 재사용 금지". RAM 직접 접근과는 무관.</strong>
+  </div>
 </div>
 
 <!-- ====================== 심화 복습: 캐시·store buffer·MESI ====================== -->

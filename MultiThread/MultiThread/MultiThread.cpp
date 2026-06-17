@@ -8,25 +8,15 @@ using namespace std;
 
 CRITICAL_SECTION g_cs;
 CONDITION_VARIABLE g_cv;
-queue<int> g_jobs;
-bool g_shutdown = false;
-LONG g_processedCount = 0;
+int g_doneCount = 0;
 
 unsigned __stdcall WorkerThreadProc(void* lpParameter)
 {
-    while (true) {
-        EnterCriticalSection(&g_cs);
-        while (g_jobs.empty() && !g_shutdown) {
-            SleepConditionVariableCS(&g_cv, &g_cs, INFINITE);
-        }
-        if (g_jobs.empty()) {
-            LeaveCriticalSection(&g_cs);
-            break;
-        }
-        g_jobs.pop();
-        LeaveCriticalSection(&g_cs);
-        InterlockedIncrement(&g_processedCount);
-    }
+    Sleep(rand() % 5 + 1);
+    EnterCriticalSection(&g_cs);
+    g_doneCount++;
+    WakeAllConditionVariable(&g_cv);
+    LeaveCriticalSection(&g_cs);
 
     return 0;
 }
@@ -37,7 +27,7 @@ int main()
     InitializeCriticalSection(&g_cs);
     InitializeConditionVariable(&g_cv);
 
-    constexpr int readerThreadCount = 4;
+    constexpr int readerThreadCount = 3;
 
     HANDLE readHandles[readerThreadCount] = {};
 
@@ -55,15 +45,12 @@ int main()
         ++createdThread;
     }
 
-    for (int i = 0; i < 1000; ++i) {
-        EnterCriticalSection(&g_cs);
-        g_jobs.push(i + 1);
-        LeaveCriticalSection(&g_cs);
-        WakeConditionVariable(&g_cv);
+    EnterCriticalSection(&g_cs);
+    while (g_doneCount < 3) {
+        SleepConditionVariableCS(&g_cv, &g_cs, INFINITE);
     }
-
-    g_shutdown = true;
-    WakeAllConditionVariable(&g_cv);
+    LeaveCriticalSection(&g_cs);
+    cout << "모두 완료" << endl;
 
     DWORD res = ::WaitForMultipleObjects(createdThread, readHandles, TRUE, INFINITE);
     if (res == WAIT_FAILED) {
@@ -79,8 +66,6 @@ int main()
     for (int i = 0; i < createdThread; ++i) {
         ::CloseHandle(readHandles[i]);
     }
-
-    cout << g_processedCount << endl;
 
     return 0;
 }
