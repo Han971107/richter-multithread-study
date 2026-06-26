@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>제프리 리처 Windows via C/C++ - 7장 요약</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 30px;
+    background: #f5f5f5;
+    color: #2c3e50;
+    line-height: 1.7;
+  }
+  h1 {
+    color: #1a5490;
+    border-bottom: 3px solid #1a5490;
+    padding-bottom: 10px;
+  }
+  h2 {
+    color: #1a5490;
+    background: #fff;
+    padding: 12px 20px;
+    border-left: 5px solid #1a5490;
+    border-radius: 4px;
+    margin-top: 40px;
+  }
+  h3 { color: #2c3e50; margin-top: 24px; }
+  code {
+    background: #e8e8e8;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'Consolas', monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: 'Consolas', monospace;
+    font-size: 0.9em;
+    line-height: 1.5;
+  }
+  .progress-bar-container {
+    background: #ddd;
+    border-radius: 8px;
+    height: 20px;
+    margin: 10px 0 20px 0;
+    overflow: hidden;
+  }
+  .progress-bar {
+    background: #28a745;
+    height: 100%;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    color: white;
+    font-size: 0.8em;
+    font-weight: bold;
+  }
+  .section-checklist {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 14px 20px;
+    margin-bottom: 30px;
+  }
+  .section-checklist li { margin: 4px 0; }
+  .done::before { content: "✅ "; }
+  .todo::before { content: "⬜ "; }
+  .warn {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 10px 16px;
+    border-radius: 4px;
+    margin: 12px 0;
+  }
+  .tip {
+    background: #d1ecf1;
+    border-left: 4px solid #17a2b8;
+    padding: 10px 16px;
+    border-radius: 4px;
+    margin: 12px 0;
+  }
+  .key-point {
+    background: #d4edda;
+    border-left: 4px solid #28a745;
+    padding: 10px 16px;
+    border-radius: 4px;
+    margin: 12px 0;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    background: #fff;
+  }
+  th {
+    background: #1a5490;
+    color: white;
+    padding: 8px 12px;
+    text-align: left;
+  }
+  td { padding: 8px 12px; border-bottom: 1px solid #eee; }
+  tr:hover { background: #f9f9f9; }
+  .priority-table td, .priority-table th { text-align: center; font-size: 0.88em; }
+  .priority-table td:first-child { text-align: left; font-weight: bold; }
+  .hi { color: #c0392b; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<h1>📘 7장: 스레드 스케줄링, 우선순위, 친화성</h1>
+<p><em>Jeffrey Richter - Windows via C/C++ 한국어판 학습 기록</em></p>
+
+<div class="section-checklist">
+  <strong>진행률</strong>
+  <div class="progress-bar-container">
+    <div class="progress-bar" style="width: 100%">강의 완료 ✓</div>
+  </div>
+  <ul style="list-style:none; padding:0; margin:0;">
+    <li class="done">섹션 1: 중단·재개·컨텍스트 전환 (SuspendThread, Sleep, SwitchToThread)</li>
+    <li class="done">섹션 2: 우선순위 시스템 (Priority Class × Thread Priority → 실제 레벨)</li>
+    <li class="done">섹션 3: 동적 우선순위 부스팅 & 퀀텀 구조</li>
+    <li class="done">섹션 4: CPU 친화성 (Affinity)</li>
+  </ul>
+</div>
+
+<!-- ============================== 섹션 1 ============================== -->
+<h2>섹션 1: 중단·재개·컨텍스트 전환</h2>
+
+<h3>Windows 스케줄러 기본</h3>
+<p>Windows는 <strong>선점형(preemptive) 우선순위 기반 스케줄러</strong>. 매 <strong>퀀텀(quantum)</strong>(≈15~30ms)마다 다음 실행할 스레드 교체 결정. 현재 스레드를 강제로 멈출 수 있음.</p>
+
+<h3>SuspendThread / ResumeThread</h3>
+<pre>DWORD SuspendThread(HANDLE hThread);   // 리턴: 이전 suspend count
+DWORD ResumeThread(HANDLE hThread);    // 리턴: 이전 suspend count</pre>
+<ul>
+  <li>각 스레드는 내부 <strong>suspend count</strong>를 가짐. SuspendThread → +1, ResumeThread → -1</li>
+  <li>count가 <strong>0이 되어야</strong> 실행 재개</li>
+  <li><code>CreateThread(..., CREATE_SUSPENDED)</code> → count=1로 생성 → 준비 완료 후 ResumeThread</li>
+</ul>
+<div class="warn">
+  <strong>위험:</strong> 대상 스레드가 힙 할당·뮤텍스 보유 중에 suspend되면 데드락. 외부 스레드 suspend는 디버거 용도 외엔 쓰지 말 것.
+</div>
+
+<h3>Sleep / SwitchToThread / YieldProcessor 비교</h3>
+<pre>VOID Sleep(DWORD dwMilliseconds);
+BOOL SwitchToThread(VOID);
+YieldProcessor(); // 인트린식 (x86: PAUSE, ARM: YIELD)</pre>
+<table>
+  <thead><tr><th>함수</th><th>OS 개입</th><th>양보 대상</th><th>용도</th></tr></thead>
+  <tbody>
+    <tr><td>YieldProcessor</td><td>없음</td><td>없음 (CPU 힌트만)</td><td>스핀루프 내부</td></tr>
+    <tr><td>Sleep(0)</td><td>있음</td><td>동일 우선순위 이상</td><td>협력적 양보</td></tr>
+    <tr><td>SwitchToThread</td><td>있음</td><td><strong>낮은 우선순위 포함</strong></td><td>starvation 방지 스핀락</td></tr>
+  </tbody>
+</table>
+<div class="key-point">
+  <code>Sleep(0)</code> vs <code>SwitchToThread()</code>: SwitchToThread는 낮은 우선순위 스레드에게도 양보 가능.
+</div>
+
+<h3>GetThreadTimes</h3>
+<pre>BOOL GetThreadTimes(HANDLE hThread,
+    PFILETIME pCreationTime, PFILETIME pExitTime,
+    PFILETIME pKernelTime,   PFILETIME pUserTime);</pre>
+<p>커널 모드 vs 유저 모드 소비 시간 분리. 게임 물리 스레드가 과도하게 시스템 콜 치는지 진단 시 사용.</p>
+
+<!-- ============================== 섹션 2 ============================== -->
+<h2>섹션 2: 우선순위 시스템</h2>
+
+<h3>두 층짜리 추상화</h3>
+<ol>
+  <li><strong>프로세스 우선순위 클래스</strong> (6가지) — 프로세스 단위</li>
+  <li><strong>스레드 우선순위 레벨</strong> (7가지) — 클래스 내 상대적 위치</li>
+</ol>
+<p>이 둘의 조합 → <strong>실제 우선순위(0~31)</strong>로 변환</p>
+
+<h3>프로세스 우선순위 클래스</h3>
+<pre>SetPriorityClass(GetCurrentProcess(), 클래스_상수);</pre>
+<table>
+  <thead><tr><th>상수</th><th>의미</th></tr></thead>
+  <tbody>
+    <tr><td><code>IDLE_PRIORITY_CLASS</code></td><td>시스템이 놀 때만 (스크린세이버류)</td></tr>
+    <tr><td><code>BELOW_NORMAL_PRIORITY_CLASS</code></td><td>Normal보다 약간 낮음</td></tr>
+    <tr><td><code>NORMAL_PRIORITY_CLASS</code></td><td>기본값 (대부분 앱)</td></tr>
+    <tr><td><code>ABOVE_NORMAL_PRIORITY_CLASS</code></td><td>Normal보다 약간 높음</td></tr>
+    <tr><td><code>HIGH_PRIORITY_CLASS</code></td><td>시간 임계 작업용</td></tr>
+    <tr><td><code class="hi">REALTIME_PRIORITY_CLASS</code></td><td>⚠️ OS 스레드까지 선점. 관리자 권한 필요</td></tr>
+  </tbody>
+</table>
+<div class="warn">
+  <strong>REALTIME_PRIORITY_CLASS 금지:</strong> 마우스·키보드·디스크 I/O 처리하는 OS 스레드도 선점 → 시스템 멈춤.
+</div>
+
+<h3>스레드 우선순위 레벨</h3>
+<pre>SetThreadPriority(GetCurrentThread(), 레벨_상수);</pre>
+<table>
+  <thead><tr><th>상수</th><th>의미</th></tr></thead>
+  <tbody>
+    <tr><td><code>THREAD_PRIORITY_IDLE</code></td><td>고정 1 (REALTIME에선 16)</td></tr>
+    <tr><td><code>THREAD_PRIORITY_LOWEST</code></td><td>클래스 기준 -2</td></tr>
+    <tr><td><code>THREAD_PRIORITY_BELOW_NORMAL</code></td><td>-1</td></tr>
+    <tr><td><code>THREAD_PRIORITY_NORMAL</code></td><td>기본 (0)</td></tr>
+    <tr><td><code>THREAD_PRIORITY_ABOVE_NORMAL</code></td><td>+1</td></tr>
+    <tr><td><code>THREAD_PRIORITY_HIGHEST</code></td><td>+2</td></tr>
+    <tr><td><code>THREAD_PRIORITY_TIME_CRITICAL</code></td><td>고정 15 (REALTIME에선 31)</td></tr>
+  </tbody>
+</table>
+
+<h3>실제 우선순위 매핑 테이블</h3>
+<table class="priority-table">
+  <thead>
+    <tr>
+      <th>스레드 레벨 \\ 프로세스 클래스</th>
+      <th>Idle</th><th>BelNorm</th><th>Normal</th><th>AbvNorm</th><th>High</th><th>Realtime</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>TIME_CRITICAL</td><td>15</td><td>15</td><td>15</td><td>15</td><td>15</td><td class="hi">31</td></tr>
+    <tr><td>HIGHEST</td><td>6</td><td>8</td><td>10</td><td>12</td><td>15</td><td class="hi">26</td></tr>
+    <tr><td>ABOVE_NORMAL</td><td>5</td><td>7</td><td>9</td><td>11</td><td>14</td><td class="hi">25</td></tr>
+    <tr><td>NORMAL</td><td>4</td><td>6</td><td><strong>8</strong></td><td>10</td><td>13</td><td class="hi">24</td></tr>
+    <tr><td>BELOW_NORMAL</td><td>3</td><td>5</td><td>7</td><td>9</td><td>12</td><td class="hi">23</td></tr>
+    <tr><td>LOWEST</td><td>2</td><td>4</td><td>6</td><td>8</td><td>11</td><td class="hi">22</td></tr>
+    <tr><td>IDLE</td><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td><td class="hi">16</td></tr>
+  </tbody>
+</table>
+<div class="tip">
+  레벨 0 = Zero Page Thread 전용 (사용 불가). 레벨 16~31 = REALTIME_PRIORITY_CLASS만 접근 가능.
+</div>
+
+<h3>게임 엔진 활용 패턴</h3>
+<pre>SetThreadPriority(hRenderThread,      THREAD_PRIORITY_ABOVE_NORMAL);
+SetThreadPriority(hAudioThread,       THREAD_PRIORITY_HIGHEST);
+SetThreadPriority(hAssetLoaderThread, THREAD_PRIORITY_BELOW_NORMAL);</pre>
+<div class="key-point">
+  Unreal Engine의 <code>EThreadPriority</code> enum은 내부적으로 이 Win32 상수로 변환됨.
+</div>
+
+<!-- ============================== 섹션 3 ============================== -->
+<h2>섹션 3: 동적 우선순위 부스팅 & 퀀텀 구조</h2>
+
+<h3>동적 우선순위 부스팅(Dynamic Priority Boost)</h3>
+<p>특정 이벤트 시 스레드 우선순위를 <strong>일시적으로 올려줌</strong>. 부스트된 우선순위는 퀀텀이 끝날 때마다 1씩 내려가 원래 값으로 복귀.</p>
+<table>
+  <thead><tr><th>트리거</th><th>설명</th></tr></thead>
+  <tbody>
+    <tr><td>I/O 완료</td><td>디스크/네트워크 대기 중이던 스레드가 깨어날 때 (+1~+2)</td></tr>
+    <tr><td>윈도우 메시지 수신</td><td>포어그라운드 GUI 이벤트 처리 스레드</td></tr>
+    <tr><td>동기화 객체 해제</td><td>세마포어/뮤텍스 신호 받아 대기 해제된 스레드</td></tr>
+  </tbody>
+</table>
+
+<h3>포어그라운드 프로세스 퀀텀 부스팅</h3>
+<p>활성 창(포어그라운드) 프로세스 스레드의 퀀텀이 <strong>최대 3배</strong> 더 길어짐. 백그라운드 서버 프로세스는 이 혜택 없음.</p>
+
+<h3>SetThreadPriorityBoost — 동적 부스팅 비활성화</h3>
+<pre>BOOL SetThreadPriorityBoost(HANDLE hThread, BOOL bDisablePriorityBoost);
+BOOL GetThreadPriorityBoost(HANDLE hThread, PBOOL pbDisablePriorityBoost);</pre>
+<div class="key-point">
+  게임의 렌더·물리 스레드처럼 퀀텀을 일정하게 유지해야 할 때 부스팅을 끄면 스케줄링 예측성이 올라감.
+</div>
+
+<h3>퀀텀(Quantum) 구조</h3>
+<pre>높은 우선순위 스레드 등장  → 즉시 선점 (퀀텀 남아도 뺏김)
+동일 우선순위끼리          → 라운드 로빈 (퀀텀 소진 후 다음)
+낮은 우선순위 스레드       → 높은 우선순위 스레드가 전부 대기일 때만 실행</pre>
+<div class="warn">
+  <strong>기아(Starvation):</strong> 높은 우선순위 스레드가 절대 잠들지 않으면 낮은 우선순위 스레드는 영원히 실행 안 됨. 동적 부스팅이 완화하지만 설계 수준에서 고려 필요.
+</div>
+
+<!-- ============================== 섹션 4 ============================== -->
+<h2>섹션 4: CPU 친화성 (Affinity)</h2>
+
+<h3>왜 친화성이 필요한가</h3>
+<p>스레드가 코어를 옮기면 발생하는 문제:</p>
+<ul>
+  <li><strong>캐시 미스</strong>: 코어를 옮기면 L1/L2 캐시를 다시 채워야 함</li>
+  <li><strong>NUMA 패널티</strong>: NUMA 시스템에서 다른 노드의 메모리 접근 시 지연 발생</li>
+  <li><strong>타이밍 예측 불가</strong>: 코어가 바뀌면 실행 시간 예측이 어려워짐</li>
+</ul>
+
+<h3>Soft Affinity vs Hard Affinity</h3>
+<table>
+  <thead><tr><th>종류</th><th>설명</th><th>API</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Soft Affinity</strong></td><td>"가능하면 이 코어 선호" 힌트. 보장 없음</td><td>SetThreadIdealProcessor</td></tr>
+    <tr><td><strong>Hard Affinity</strong></td><td>이 코어 집합에서만 실행. 강제 제한</td><td>SetThreadAffinityMask</td></tr>
+  </tbody>
+</table>
+
+<h3>SetProcessAffinityMask</h3>
+<pre>BOOL SetProcessAffinityMask(HANDLE hProcess, DWORD_PTR dwProcessAffinityMask);
+BOOL GetProcessAffinityMask(HANDLE hProcess,
+    PDWORD_PTR pdwProcessAffinityMask,  // 프로세스 친화성 마스크
+    PDWORD_PTR pdwSystemAffinityMask);  // 시스템 전체 코어 마스크</pre>
+<p>마스크는 비트맵: 4코어에서 코어 0,1만 허용 → <code>mask = 0b0011</code>. 프로세스 내 모든 스레드에 적용.</p>
+
+<h3>SetThreadAffinityMask</h3>
+<pre>DWORD_PTR SetThreadAffinityMask(HANDLE hThread, DWORD_PTR dwThreadAffinityMask);</pre>
+<p>스레드 개별 친화성. <strong>프로세스 마스크의 부분집합</strong>이어야 함. 리턴값 = 이전 마스크.</p>
+<pre>// 렌더 스레드를 코어 0에 고정
+SetThreadAffinityMask(hRenderThread, 1 << 0);
+
+// 물리 스레드를 코어 2,3에 고정
+SetThreadAffinityMask(hPhysicsThread, (1 << 2) | (1 << 3));</pre>
+
+<h3>SetThreadIdealProcessor — 소프트 힌트</h3>
+<pre>DWORD SetThreadIdealProcessor(HANDLE hThread, DWORD dwIdealProcessor);</pre>
+<p>하드 친화성의 과도한 제약 없이 캐시 효율을 높일 때 사용. OS가 최대한 지켜주지만 보장 없음.</p>
+
+<h3>GetLogicalProcessorInformation</h3>
+<pre>BOOL GetLogicalProcessorInformation(
+    PSYSTEM_LOGICAL_PROCESSOR_INFORMATION pBuffer,
+    PDWORD pdwReturnLength);</pre>
+<p>물리 코어 수, 논리 코어 수(하이퍼스레딩 포함), L캐시 공유 관계 등 코어 토폴로지 정보. 게임 엔진 초기화 시 스레드 풀 크기와 친화성 전략 결정에 사용.</p>
+
+<h3>실전 패턴: 게임 엔진 스레드 레이아웃</h3>
+<pre>코어 0: 메인 스레드 (게임 로직)
+코어 1: 렌더 스레드 (드로콜 생성)
+코어 2: 오디오 스레드
+코어 3: 물리 스레드
+코어 4,5: 워커 스레드 풀 (Job System)</pre>
+<div class="warn">
+  <strong>과도한 친화성 고정 주의:</strong> 코어 0이 바쁠 때 코어 1이 놀아도 메인 스레드를 도울 수 없게 됨. Job System(Ch 13)에서 친화성을 동적으로 관리하는 이유.
+</div>
+
+<!-- ============================== 챕터 정리 ============================== -->
+<h2>챕터 7 핵심 요약</h2>
+<table>
+  <thead><tr><th>주제</th><th>핵심</th></tr></thead>
+  <tbody>
+    <tr><td>스케줄러</td><td>선점형, 우선순위 기반, 퀀텀 단위로 교체</td></tr>
+    <tr><td>SuspendThread</td><td>suspend count 기반, 외부 스레드 suspend = 데드락 위험</td></tr>
+    <tr><td>SwitchToThread vs Sleep(0)</td><td>SwitchToThread는 낮은 우선순위에도 양보</td></tr>
+    <tr><td>우선순위 시스템</td><td>프로세스 클래스(6) × 스레드 레벨(7) → 실제 0~31</td></tr>
+    <tr><td>REALTIME 클래스</td><td>OS 스레드도 선점 → 게임에서 절대 사용 금지</td></tr>
+    <tr><td>동적 부스팅</td><td>I/O완료·메시지수신 시 자동 우선순위 상승, 퀀텀마다 -1씩 복귀</td></tr>
+    <tr><td>CPU 친화성</td><td>Hard(SetThreadAffinityMask) vs Soft(SetThreadIdealProcessor)</td></tr>
+    <tr><td>과도한 친화성</td><td>코어 낭비 유발, Job System에서 동적 관리가 정답</td></tr>
+  </tbody>
+</table>
+
+</body>
+</html>

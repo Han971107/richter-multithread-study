@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>제프리 리처 Windows via C/C++ - 9장 요약</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 30px;
+    background: #f5f5f5;
+    color: #2c3e50;
+    line-height: 1.7;
+  }
+  h1 {
+    color: #1a5490;
+    border-bottom: 3px solid #1a5490;
+    padding-bottom: 10px;
+  }
+  h2 {
+    color: #1a5490;
+    background: #fff;
+    padding: 12px 20px;
+    border-left: 5px solid #1a5490;
+    border-radius: 4px;
+    margin-top: 40px;
+  }
+  h3 {
+    color: #2c5282;
+    margin-top: 25px;
+  }
+  .section {
+    background: #fff;
+    padding: 25px 30px;
+    margin: 20px 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .question {
+    background: #fff3cd;
+    border-left: 5px solid #ffc107;
+    padding: 15px 20px;
+    margin: 10px 0;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .answer-box {
+    background: #e7f5e7;
+    border-left: 5px solid #28a745;
+    padding: 15px 20px;
+    margin: 10px 0;
+    border-radius: 4px;
+  }
+  .warning {
+    background: #f8d7da;
+    border-left: 5px solid #dc3545;
+    padding: 15px 20px;
+    margin: 10px 0;
+    border-radius: 4px;
+  }
+  .info {
+    background: #d1ecf1;
+    border-left: 5px solid #17a2b8;
+    padding: 15px 20px;
+    margin: 10px 0;
+    border-radius: 4px;
+  }
+  .tip {
+    background: #e2e3f3;
+    border-left: 5px solid #6610f2;
+    padding: 15px 20px;
+    margin: 10px 0;
+    border-radius: 4px;
+  }
+  code {
+    background: #2d2d2d;
+    color: #f8f8f2;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.92em;
+  }
+  pre {
+    background: #2d2d2d;
+    color: #f8f8f2;
+    padding: 18px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9em;
+    line-height: 1.5;
+  }
+  pre code {
+    background: transparent;
+    padding: 0;
+  }
+  .keyword { color: #ff79c6; }
+  .type { color: #8be9fd; }
+  .comment { color: #6272a4; font-style: italic; }
+  .string { color: #f1fa8c; }
+  .number { color: #bd93f9; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    background: white;
+  }
+  th, td {
+    padding: 10px 12px;
+    text-align: left;
+    border: 1px solid #dee2e6;
+  }
+  th {
+    background: #1a5490;
+    color: white;
+    font-weight: 600;
+  }
+  tr:nth-child(even) { background: #f8f9fa; }
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 600;
+    margin-right: 5px;
+  }
+  .badge-good { background: #28a745; color: white; }
+  .badge-bad { background: #dc3545; color: white; }
+  .badge-warn { background: #ffc107; color: #333; }
+  .badge-info { background: #17a2b8; color: white; }
+  .toc {
+    background: #fff;
+    padding: 20px 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+  }
+  .toc ul { list-style: none; padding-left: 0; }
+  .toc li {
+    padding: 6px 0;
+    border-bottom: 1px dashed #e0e0e0;
+  }
+  .toc li:last-child { border-bottom: none; }
+  .toc a {
+    color: #1a5490;
+    text-decoration: none;
+    font-weight: 500;
+  }
+  .toc a:hover { text-decoration: underline; }
+  .formula {
+    background: #fff8e1;
+    padding: 12px 18px;
+    border-radius: 4px;
+    font-family: 'Consolas', monospace;
+    margin: 10px 0;
+    border-left: 4px solid #ffa000;
+  }
+  .progress {
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    height: 24px;
+    margin: 10px 0;
+  }
+  .progress-bar {
+    background: #1a5490;
+    color: white;
+    text-align: center;
+    line-height: 24px;
+    font-size: 0.85em;
+    font-weight: 600;
+  }
+  .footer {
+    text-align: center;
+    color: #999;
+    margin-top: 40px;
+    padding: 20px;
+    font-size: 0.9em;
+  }
+</style>
+</head>
+<body>
+
+<h1>제프리 리처 Windows via C/C++ - 9장: 커널 객체 기반 스레드 동기화 요약</h1>
+
+<div class="info" style="margin-bottom: 25px;">
+  <strong>진행 상황</strong>
+  <div class="progress">
+    <div class="progress-bar" style="width: 100%;">강의 완료</div>
+  </div>
+  <ul style="margin: 8px 0 0 0;">
+    <li><span class="badge badge-good">✓</span> 섹션 1. 왜 커널 객체인가 — 유저 모드 한계</li>
+    <li><span class="badge badge-good">✓</span> 섹션 2. Wait 함수</li>
+    <li><span class="badge badge-good">✓</span> 섹션 3. 커널 객체별 신호 규칙</li>
+    <li><span class="badge badge-good">✓</span> 섹션 4. Mutex</li>
+    <li><span class="badge badge-good">✓</span> 섹션 5. Semaphore</li>
+    <li><span class="badge badge-good">✓</span> 섹션 6. Event (Auto-reset / Manual-reset)</li>
+    <li><span class="badge badge-good">✓</span> 섹션 7. Waitable Timer</li>
+  </ul>
+</div>
+
+<div class="toc">
+  <h3 style="margin-top:0;">목차</h3>
+  <ul>
+    <li><a href="#s1">섹션 1. 왜 커널 객체인가 — 유저 모드 한계</a></li>
+    <li><a href="#s2">섹션 2. Wait 함수</a></li>
+    <li><a href="#s3">섹션 3. 커널 객체별 신호 규칙 일람</a></li>
+    <li><a href="#s4">섹션 4. Mutex — 소유권 있는 락</a></li>
+    <li><a href="#s5">섹션 5. Semaphore — 카운트 기반 접근 제어</a></li>
+    <li><a href="#s6">섹션 6. Event — 신호 전달 도구</a></li>
+    <li><a href="#s7">섹션 7. Waitable Timer</a></li>
+    <li><a href="#compare">종합 비교표</a></li>
+  </ul>
+</div>
+
+<!-- ============================== 섹션 1 ============================== -->
+<h2 style="color:#fff; background:#1a5490; padding:18px 24px; border-left:none; border-radius:6px;">
+  섹션 1 · 왜 커널 객체인가
+</h2>
+
+<div class="section" id="s1">
+  <h2>1-1. 유저 모드 동기화의 한계</h2>
+
+  <div class="answer-box">
+    <strong>핵심 명제:</strong> CS·SRWLOCK·CV·Interlocked 는 프로그래머가 <strong>명시적으로 신호를 보내야만</strong> 동작한다. OS 이벤트(스레드 종료, 프로세스 종료 등)와 자동으로 연동되지 않는다.
+  </div>
+
+  <table>
+    <tr><th>필요한 상황</th><th>유저 모드로 가능?</th><th>이유</th></tr>
+    <tr><td>스레드 A가 종료될 때까지 대기</td><td>❌ 완전 불가</td><td>스레드 크래시·강제 종료 시 notify 안 됨</td></tr>
+    <tr><td>프로세스 간 동기화</td><td>❌</td><td>유저 모드 객체는 프로세스 경계 못 넘음</td></tr>
+    <tr><td>타임아웃 포함 대기</td><td>△ 번거로움</td><td>CV는 별도 계산 필요</td></tr>
+    <tr><td>여러 객체 중 하나만 기다리기</td><td>❌</td><td>없음</td></tr>
+  </table>
+
+  <div class="question">
+    CV로 "스레드 종료 대기"를 흉내낼 때 어디서 깨지나?
+  </div>
+  <div class="warning">
+    스레드 함수 마지막에 <code>notify_all()</code>을 넣어도 — 스레드가 <strong>예외·크래시·TerminateThread</strong>로 죽으면 <code>notify_all()</code>에 도달하지 못한다. 대기 스레드가 영원히 블로킹. OS가 이 사실을 CV에게 알려줄 방법이 없다.
+  </div>
+
+  <div class="answer-box">
+    <strong>커널 객체의 해법:</strong> Thread HANDLE은 커널 객체다. 스레드가 <strong>어떤 이유로든</strong> 종료되는 순간 OS가 자동으로 signaled 상태로 전환한다. 크래시·정상 리턴·TerminateThread 모두 포함.
+<pre style="margin-top:10px;"><code>WaitForSingleObject(hThread, INFINITE); <span class="comment">// 종료 방법 무관, 100% 보장</span></code></pre>
+  </div>
+
+  <h3>커널 객체란?</h3>
+  <div class="info">
+    OS가 커널 메모리에 할당하고 관리하는 오브젝트. <strong>HANDLE</strong>로 접근한다. 스레드, 프로세스, 뮤텍스, 세마포어, 이벤트, 타이머, 파일 등이 모두 커널 객체다. 프로세스 경계를 넘어 공유 가능하고, 타임아웃 있는 대기가 가능하다.
+  </div>
+
+  <h3>핵심 개념: Signaled / Non-signaled</h3>
+  <div class="answer-box">
+    모든 커널 객체는 항상 두 상태 중 하나다.<br><br>
+    <strong>Signaled</strong> — "사용 가능" 또는 "이벤트 발생". Wait 함수를 통과한다.<br>
+    <strong>Non-signaled</strong> — "아직 아님". Wait 함수가 스레드를 블로킹한다.
+  </div>
+</div>
+
+<!-- ============================== 섹션 2 ============================== -->
+<h2 style="color:#fff; background:#1a5490; padding:18px 24px; border-left:none; border-radius:6px;">
+  섹션 2 · Wait 함수
+</h2>
+
+<div class="section" id="s2">
+  <h2>2-1. WaitForSingleObject / WaitForMultipleObjects</h2>
+
+<pre><code><span class="type">DWORD</span> WaitForSingleObject(<span class="type">HANDLE</span> hObject, <span class="type">DWORD</span> dwMilliseconds);
+<span class="type">DWORD</span> WaitForMultipleObjects(<span class="type">DWORD</span> nCount, <span class="keyword">const</span> <span class="type">HANDLE</span>* ph,
+                             <span class="type">BOOL</span> bWaitAll, <span class="type">DWORD</span> dwMilliseconds);</code></pre>
+
+  <div class="answer-box">
+    이 함수를 호출한 스레드는 커널이 <strong>대기 상태(suspended)</strong>로 전환한다. CPU를 소비하지 않는다. 객체가 signaled되면 커널이 스레드를 깨운다.
+  </div>
+
+  <h3>반환값</h3>
+  <table>
+    <tr><th>반환값</th><th>의미</th></tr>
+    <tr><td><code>WAIT_OBJECT_0</code></td><td>정상 signaled (또는 복수 인덱스: <code>WAIT_OBJECT_0 + i</code>)</td></tr>
+    <tr><td><code>WAIT_TIMEOUT</code></td><td>타임아웃 만료 — 객체는 아직 non-signaled</td></tr>
+    <tr><td><code>WAIT_ABANDONED</code></td><td>뮤텍스 소유 스레드가 비정상 종료 (뮤텍스 한정)</td></tr>
+    <tr><td><code>WAIT_FAILED</code></td><td>함수 오류 — <code>GetLastError()</code>로 원인 확인</td></tr>
+  </table>
+
+  <h3>dwMilliseconds 특수값</h3>
+  <table>
+    <tr><th>값</th><th>동작</th></tr>
+    <tr><td><code>INFINITE</code></td><td>signaled될 때까지 영원히 대기</td></tr>
+    <tr><td><code>0</code></td><td>현재 상태만 확인하고 즉시 반환 (논블로킹 폴링)</td></tr>
+  </table>
+
+  <h3>WaitForMultipleObjects — bWaitAll</h3>
+  <div class="info">
+    <code>bWaitAll = TRUE</code> — 배열의 모든 핸들이 signaled일 때 반환<br>
+    <code>bWaitAll = FALSE</code> — 배열 중 하나라도 signaled면 즉시 반환. 반환값 <code>WAIT_OBJECT_0 + i</code>가 그 인덱스.
+  </div>
+
+  <div class="warning">
+    <strong>⚠️ bWaitAll = TRUE 주의:</strong> 전부 다 signaled가 되는 그 순간을 원자적으로 감지하는 것이 아니다. 하나씩 획득하는 과정에서 데드락이 생길 수 있다. 락 순서와 동일한 주의가 필요하다.
+  </div>
+</div>
+
+<!-- ============================== 섹션 3 ============================== -->
+<h2 style="color:#fff; background:#1a5490; padding:18px 24px; border-left:none; border-radius:6px;">
+  섹션 3 · 커널 객체별 신호 규칙
+</h2>
+
+<div class="section" id="s3">
+  <table>
+    <tr>
+      <th>객체</th>
+      <th>Signaled 조건</th>
+      <th>Non-signaled 조건</th>
+      <th>소유권</th>
+    </tr>
+    <tr>
+      <td><strong>프로세스</strong></td>
+      <td>종료됨</td>
+      <td>실행 중</td>
+      <td>없음</td>
+    </tr>
+    <tr>
+      <td><strong>스레드</strong></td>
+      <td>종료됨</td>
+      <td>실행 중</td>
+      <td>없음</td>
+    </tr>
+    <tr>
+      <td><strong>Mutex</strong></td>
+      <td>아무도 소유 안 함</td>
+      <td>누군가 소유 중</td>
+      <td>있음 (획득 스레드만 해제 가능)</td>
+    </tr>
+    <tr>
+      <td><strong>Semaphore</strong></td>
+      <td>카운트 &gt; 0</td>
+      <td>카운트 = 0</td>
+      <td>없음</td>
+    </tr>
+    <tr>
+      <td><strong>Event (auto-reset)</strong></td>
+      <td>SetEvent 후 / Wait 성공 즉시 reset</td>
+      <td>기본 또는 Wait 성공 후</td>
+      <td>없음</td>
+    </tr>
+    <tr>
+      <td><strong>Event (manual-reset)</strong></td>
+      <td>SetEvent 후 — 유지</td>
+      <td>ResetEvent 호출 후</td>
+      <td>없음</td>
+    </tr>
+    <tr>
+      <td><strong>Waitable Timer</strong></td>
+      <td>지정 시각 도달 / 주기 경과</td>
+      <td>타이머 설정 전 / 다음 주기 전</td>
+      <td>없음</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ============================== 섹션 4 ============================== -->
+<h2 style="color:#fff; background:#1a5490; padding:18px 24px; border-left:none; border-radius:6px;">
+  섹션 4 · Mutex
+</h2>
+
+<div class="section" id="s4">
+  <h2>4-1. API</h2>
+
+<pre><code><span class="type">HANDLE</span> CreateMutex(
+    <span class="type">LPSECURITY_ATTRIBUTES</span> lpAttr,
+    <span class="type">BOOL</span> bInitialOwner,   <span class="comment">// TRUE면 생성 즉시 이 스레드가 소유</span>
+    <span class="type">LPCTSTR</span> lpName        <span class="comment">// NULL이면 익명, 이름 지정 시 프로세스 간 공유</span>
+);
+<span class="type">BOOL</span> ReleaseMutex(<span class="type">HANDLE</span> hMutex);</code></pre>
+
+  <div class="answer-box">
+    WaitForSingleObject로 획득, ReleaseMutex로 해제. <strong>획득한 스레드만 해제 가능</strong>하다는 소유권 개념이 있다.
+  </div>
+
+  <h2>4-2. Mutex의 특성</h2>
+
+  <h3>① 재귀 획득 가능</h3>
+  <div class="info">
+    같은 스레드가 이미 소유 중인 Mutex를 다시 Wait해도 블로킹되지 않는다. 내부적으로 획득 횟수를 카운팅하고, ReleaseMutex를 같은 횟수만큼 호출해야 완전히 해제된다. Critical Section과 같은 동작.
+  </div>
+
+  <h3>② WAIT_ABANDONED — 소유 스레드 비정상 종료</h3>
+  <div class="warning">
+    <strong>뮤텍스의 핵심 차별점.</strong> 소유 스레드가 ReleaseMutex 없이 죽으면 OS가 자동으로 뮤텍스를 signaled로 전환하고, 대기 중이던 다음 스레드에게 소유권을 넘긴다. 단 반환값이 <code>WAIT_OBJECT_0</code>이 아니라 <strong><code>WAIT_ABANDONED</code></strong>다.<br><br>
+    이 값은 "공유 자원 상태가 오염됐을 수 있다"는 경고다. 받았다면 데이터 무결성 검사를 해야 한다.
+  </div>
+
+  <div class="question">
+    Critical Section 소유 스레드가 죽으면 어떻게 되나?
+  </div>
+  <div class="warning">
+    CS는 커널 객체가 아니다. OS가 CS 소유자의 생사를 알지 못한다. 락이 영원히 잠긴 채 남아 <strong>영구 블로킹</strong>이 된다. WAIT_ABANDONED 같은 복구 경로가 없다.
+  </div>
+
+  <h2>4-3. CS vs Mutex 선택</h2>
+  <table>
+    <tr><th></th><th>Critical Section</th><th>Mutex</th></tr>
+    <tr><td>종류</td><td>유저 모드 객체</td><td>커널 객체</td></tr>
+    <tr><td>속도 (무경합)</td><td>~25–50 ns</td><td>~1,000+ ns (커널 진입)</td></tr>
+    <tr><td>프로세스 간 공유</td><td>❌</td><td>✅ (이름 지정)</td></tr>
+    <tr><td>타임아웃 대기</td><td>❌ (TryEnter만)</td><td>✅</td></tr>
+    <tr><td>소유자 죽음 복구</td><td>❌ 영구 블로킹</td><td>✅ WAIT_ABANDONED</td></tr>
+    <tr><td>재귀 획득</td><td>✅</td><td>✅</td></tr>
+  </table>
+  <div class="answer-box">
+    <strong>선택 기준:</strong> 같은 프로세스 내 → CS가 훨씬 빠름. 프로세스 간 공유·타임아웃·소유자 크래시 복구가 필요할 때만 Mutex.
+  </div>
+</div>
+
+<!-- ============================== 섹션 5 ============================== -->
+<h2 style="color:#fff; background:#1a5490; padding:18px 24px; border-left:none; border-radius:6px;">
+  섹션 5 · Semaphore
+</h2>
+
+<div class="section" id="s5">
+  <h2>5-1. API</h2>
+
+<pre><code><span class="type">HANDLE</span> CreateSemaphore(
+    <span class="type">LPSECURITY_ATTRIBUTES</span> lpAttr,
+    <span class="type">LONG</span> lInitialCount,   <span class="comment">// 초기 카운트</span>
+    <span class="type">LONG</span> lMaximumCount,   <span class="comment">// 최대 카운트</span>
+    <span class="type">LPCTSTR</span> lpName
+);
+<span class="type">BOOL</span> ReleaseSemaphore(
+    <span class="type">HANDLE</span> hSemaphore,
+    <span class="type">LONG</span> lReleaseCount,       <span class="comment">// 카운트를 얼마나 증가시킬지</span>
+    <span class="type">LPLONG</span> lpPreviousCount    <span class="comment">// 이전 카운트 받을 포인터 (필요 없으면 NULL)</span>
+);</code></pre>
+
+  <h2>5-2. 동작 규칙</h2>
+  <div class="answer-box">
+    카운트 &gt; 0이면 signaled. WaitForSingleObject 성공 시마다 카운트 -1. 카운트가 0이 되면 non-signaled → 이후 Wait 호출 스레드는 블로킹.<br><br>
+    <strong>소유권 없음.</strong> 어느 스레드든 ReleaseSemaphore 호출 가능.
+  </div>
+
+  <h2>5-3. Mutex vs Semaphore</h2>
+  <table>
+    <tr><th></th><th>Mutex</th><th>Semaphore (최대 1)</th></tr>
+    <tr><td>소유권</td><td>있음 — 획득 스레드만 해제</td><td>없음 — 누구나 Release</td></tr>
+    <tr><td>재귀 획득</td><td>✅ 같은 스레드 재진입 가능</td><td>❌ 자기 자신도 블로킹</td></tr>
+    <tr><td>크래시 복구</td><td>✅ WAIT_ABANDONED</td><td>❌</td></tr>
+    <tr><td>용도</td><td>공유 자원 상호 배제</td><td>동시 접근 개수 제한</td></tr>
+  </table>
+
+  <div class="info">
+    <strong>💡 게임 엔진 예:</strong> 동시에 최대 4개 스레드만 asset streaming I/O를 사용할 수 있게 제한.
+<pre style="margin-top:8px;"><code><span class="comment">// 최대 4개 동시 I/O 허용</span>
+<span class="type">HANDLE</span> hSem = CreateSemaphore(<span class="keyword">NULL</span>, <span class="number">4</span>, <span class="number">4</span>, <span class="keyword">NULL</span>);
+
+<span class="comment">// 각 워커 스레드</span>
+WaitForSingleObject(hSem, INFINITE);  <span class="comment">// 슬롯 획득</span>
+DoStreamingIO();
+ReleaseSemaphore(hSem, <span class="number">1</span>, <span class="keyword">NULL</span>);      <span class="comment">// 슬롯 반환</span></code></pre>
+  </div>
+</div>
+
+<!-- ============================== 섹션 6 ============================== -->
+<h2 style="color:#fff; background:#1a5490; padding:18px 24px; border-left:none; border-radius:6px;">
+  섹션 6 · Event
+</h2>
+
+<div class="section" id="s6">
+  <h2>6-1. API</h2>
+
+<pre><code><span class="type">HANDLE</span> CreateEvent(
+    <span class="type">LPSECURITY_ATTRIBUTES</span> lpAttr,
+    <span class="type">BOOL</span> bManualReset,    <span class="comment">// TRUE = Manual-reset, FALSE = Auto-reset</span>
+    <span class="type">BOOL</span> bInitialState,   <span class="comment">// TRUE = 처음부터 signaled</span>
+    <span class="type">LPCTSTR</span> lpName
+);
+<span class="type">BOOL</span> SetEvent(<span class="type">HANDLE</span> hEvent);    <span class="comment">// signaled로 전환</span>
+<span class="type">BOOL</span> ResetEvent(<span class="type">HANDLE</span> hEvent);  <span class="comment">// non-signaled로 전환</span>
+<span class="comment">// BOOL PulseEvent(HANDLE hEvent); — 절대 사용 금지</span></code></pre>
+
+  <h2>6-2. Event의 목적 — "자원 보호"가 아니라 "신호 전달"</h2>
+
+  <div class="answer-box">
+    Mutex·Semaphore는 자원 접근을 <strong>제어</strong>하는 도구다. Event는 다르다 — "지금 해도 돼"라는 <strong>신호를 보내는</strong> 도구다. 특정 조건이 충족됐음을 다른 스레드에게 알리는 것이 목적이다.
+<pre style="margin-top:10px;"><code><span class="comment">// 스레드 A: 맵 로딩</span>
+LoadMap();
+SetEvent(hMapReady);    <span class="comment">// "로딩 끝났어"</span>
+
+<span class="comment">// 스레드 B: 렌더러</span>
+WaitForSingleObject(hMapReady, INFINITE);  <span class="comment">// 로딩 끝날 때까지 CPU 소비 없이 대기</span>
+StartRendering();</code></pre>
+  </div>
+
+  <h2>6-3. Auto-reset vs Manual-reset</h2>
+
+  <table>
+    <tr><th></th><th>Auto-reset</th><th>Manual-reset</th></tr>
+    <tr>
+      <td>SetEvent 후</td>
+      <td>대기 스레드 <strong>하나만</strong> 깨움, 즉시 non-signaled로 reset</td>
+      <td>대기 중인 스레드 <strong>전원</strong> 깨움, signaled 상태 유지</td>
+    </tr>
+    <tr>
+      <td>Reset 시점</td>
+      <td>Wait 성공한 순간 자동</td>
+      <td>ResetEvent 명시적 호출 시</td>
+    </tr>
+    <tr>
+      <td>이후 도착 스레드</td>
+      <td>블로킹 (이미 reset됨)</td>
+      <td>ResetEvent 전까지 즉시 통과</td>
+    </tr>
+    <tr>
+      <td>게임 엔진 비유</td>
+      <td>Job queue — 일감 하나에 워커 하나 배정</td>
+      <td>로딩 완료 브로드캐스트 — 모든 스레드 동시 출발</td>
+    </tr>
+  </table>
+
+  <div class="info">
+    <strong>Manual-reset 사용 이유:</strong> "이 조건은 이제 영구적으로 충족됐다"는 상태를 표현할 때. SetEvent 한 번으로 지금 대기 중인 스레드 전부 + 이후 도착하는 스레드까지 통과시킨다. Auto-reset으로 같은 효과를 내려면 스레드 수만큼 SetEvent를 호출해야 하는데, 스레드 수가 가변적이라면 불가능하다.
+  </div>
+
+  <h2>6-4. PulseEvent — 절대 쓰지 말 것</h2>
+  <div class="warning">
+    <strong>PulseEvent</strong>는 "잠깐 signaled 됐다가 non-signaled로"인데, Wait 직전에 Pulse가 오면 아무도 못 받는 레이스가 있다. 대기 스레드가 커널에 등록되기 전에 Pulse가 지나가면 신호 유실. Windows 공식 문서도 "unreliable"이라고 명시. 사용 금지.
+  </div>
+
+  <h2>6-5. CV와의 비교</h2>
+  <table>
+    <tr><th></th><th>Condition Variable (유저 모드)</th><th>Event (커널 객체)</th></tr>
+    <tr><td>프로세스 간 공유</td><td>❌</td><td>✅ (이름 지정)</td></tr>
+    <tr><td>타임아웃</td><td>△ 별도 계산</td><td>✅ WaitForSingleObject에 그대로</td></tr>
+    <tr><td>스레드 종료 감지</td><td>❌</td><td>✅ (Thread HANDLE과 WaitForMultipleObjects 조합)</td></tr>
+    <tr><td>속도</td><td>빠름 (유저 모드)</td><td>느림 (커널 진입)</td></tr>
+    <tr><td>선택 기준</td><td>같은 프로세스, 고빈도 신호</td><td>프로세스 간, 타임아웃 필요, 여러 객체 동시 대기</td></tr>
+  </table>
+</div>
+
+<!-- ============================== 섹션 7 ============================== -->
+<h2 style="color:#fff; background:#1a5490; padding:18px 24px; border-left:none; border-radius:6px;">
+  섹션 7 · Waitable Timer
+</h2>
+
+<div class="section" id="s7">
+  <h2>7-1. API</h2>
+
+<pre><code><span class="type">HANDLE</span> CreateWaitableTimer(
+    <span class="type">LPSECURITY_ATTRIBUTES</span> lpAttr,
+    <span class="type">BOOL</span> bManualReset,   <span class="comment">// Event의 Manual/Auto와 같은 개념</span>
+    <span class="type">LPCTSTR</span> lpName
+);
+<span class="type">BOOL</span> SetWaitableTimer(
+    <span class="type">HANDLE</span> hTimer,
+    <span class="keyword">const</span> <span class="type">LARGE_INTEGER</span>* pDueTime,  <span class="comment">// 음수 = 상대 시간(100ns 단위), 양수 = 절대 시각</span>
+    <span class="type">LONG</span> lPeriod,                   <span class="comment">// 0 = 1회, >0 = 주기(ms 단위)</span>
+    <span class="type">PTIMERAPCROUTINE</span> pfnCompletionRoutine,  <span class="comment">// APC 콜백, 필요 없으면 NULL</span>
+    <span class="type">LPVOID</span> lpArgToCompletionRoutine,
+    <span class="type">BOOL</span> fResume                    <span class="comment">// 절전 모드 해제 여부</span>
+);</code></pre>
+
+  <div class="answer-box">
+    특정 시각 또는 주기로 자동 signaled 된다. <code>lPeriod &gt; 0</code>이면 반복 타이머.
+  </div>
+
+  <h3>pDueTime 설정 예시</h3>
+<pre><code><span class="comment">// 5초 후 1회</span>
+<span class="type">LARGE_INTEGER</span> li;
+li.QuadPart = -(<span class="type">LONGLONG</span>)<span class="number">5</span> * <span class="number">10000000</span>;  <span class="comment">// -5초 (100ns 단위, 음수 = 상대)</span>
+SetWaitableTimer(hTimer, &amp;li, <span class="number">0</span>, <span class="keyword">NULL</span>, <span class="keyword">NULL</span>, <span class="keyword">FALSE</span>);
+
+<span class="comment">// 1초마다 반복</span>
+li.QuadPart = -<span class="number">10000000</span>;              <span class="comment">// 1초 후 첫 발화</span>
+SetWaitableTimer(hTimer, &amp;li, <span class="number">1000</span>, <span class="keyword">NULL</span>, <span class="keyword">NULL</span>, <span class="keyword">FALSE</span>); <span class="comment">// 이후 1000ms 주기</span></code></pre>
+
+  <div class="info">
+    <strong>💡 게임 엔진 활용:</strong> 특정 주기 작업(프로파일링 샘플링, 네트워크 heartbeat), 타임아웃 구현. 단, 게임 루프처럼 고빈도 정밀 타이밍에는 부적합 — OS 스케줄러 오차가 있다.
+  </div>
+</div>
+
+<!-- ============================== 종합 비교 ============================== -->
+<h2 style="color:#fff; background:#1a5490; padding:18px 24px; border-left:none; border-radius:6px;">
+  종합 비교
+</h2>
+
+<div class="section" id="compare">
+  <h2>커널 객체 선택 가이드</h2>
+  <table>
+    <tr>
+      <th>상황</th>
+      <th>선택</th>
+      <th>이유</th>
+    </tr>
+    <tr>
+      <td>스레드 종료 대기</td>
+      <td>Thread HANDLE + WaitForSingleObject</td>
+      <td>OS가 자동 signaled 보장</td>
+    </tr>
+    <tr>
+      <td>같은 프로세스 내 상호 배제</td>
+      <td>Critical Section</td>
+      <td>Mutex보다 ~20x 빠름</td>
+    </tr>
+    <tr>
+      <td>프로세스 간 상호 배제</td>
+      <td>Mutex</td>
+      <td>이름 지정으로 공유 가능</td>
+    </tr>
+    <tr>
+      <td>동시 접근 N개로 제한</td>
+      <td>Semaphore</td>
+      <td>카운트 기반. 소유권 없어 아무나 Release 가능</td>
+    </tr>
+    <tr>
+      <td>조건 충족 시 하나만 깨우기</td>
+      <td>Event (Auto-reset)</td>
+      <td>Wait 성공 즉시 reset → 하나만 통과</td>
+    </tr>
+    <tr>
+      <td>조건 충족 시 전원 브로드캐스트</td>
+      <td>Event (Manual-reset)</td>
+      <td>ResetEvent 전까지 전원 통과</td>
+    </tr>
+    <tr>
+      <td>시간 기반 대기 / 주기 작업</td>
+      <td>Waitable Timer</td>
+      <td>OS가 시각에 맞춰 자동 signaled</td>
+    </tr>
+    <tr>
+      <td>여러 조건 중 먼저 되는 것 대기</td>
+      <td>WaitForMultipleObjects (bWaitAll=FALSE)</td>
+      <td>핸들 배열 한 번에 감시</td>
+    </tr>
+  </table>
+
+  <h2>유저 모드 vs 커널 모드 전체 그림</h2>
+  <table>
+    <tr>
+      <th>도구</th>
+      <th>종류</th>
+      <th>속도</th>
+      <th>프로세스 간</th>
+      <th>타임아웃</th>
+      <th>OS 이벤트 연동</th>
+    </tr>
+    <tr>
+      <td>Interlocked</td>
+      <td>유저</td>
+      <td>~10–20 ns</td>
+      <td>❌</td>
+      <td>❌</td>
+      <td>❌</td>
+    </tr>
+    <tr>
+      <td>Critical Section</td>
+      <td>유저</td>
+      <td>~25–50 ns</td>
+      <td>❌</td>
+      <td>△</td>
+      <td>❌</td>
+    </tr>
+    <tr>
+      <td>SRWLOCK</td>
+      <td>유저</td>
+      <td>~25–50 ns</td>
+      <td>❌</td>
+      <td>❌</td>
+      <td>❌</td>
+    </tr>
+    <tr>
+      <td>Condition Variable</td>
+      <td>유저</td>
+      <td>빠름</td>
+      <td>❌</td>
+      <td>△</td>
+      <td>❌</td>
+    </tr>
+    <tr>
+      <td>Mutex</td>
+      <td>커널</td>
+      <td>~1,000+ ns</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅ (WAIT_ABANDONED)</td>
+    </tr>
+    <tr>
+      <td>Semaphore</td>
+      <td>커널</td>
+      <td>~1,000+ ns</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>❌</td>
+    </tr>
+    <tr>
+      <td>Event</td>
+      <td>커널</td>
+      <td>~1,000+ ns</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>❌</td>
+    </tr>
+    <tr>
+      <td>Waitable Timer</td>
+      <td>커널</td>
+      <td>—</td>
+      <td>✅</td>
+      <td>✅</td>
+      <td>✅ (시각 도달)</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section" style="background:#1a5490; color:#fff;">
+  <h2 style="color:#fff; background:transparent; border-left:none; padding-left:0;">챕터 9 정리</h2>
+  <ul>
+    <li>커널 객체 = HANDLE + <strong>signaled/non-signaled</strong> 상태. OS가 상태를 자동 관리</li>
+    <li>유저 모드의 한계를 넘는 세 가지: <strong>프로세스 간 공유</strong>, <strong>타임아웃</strong>, <strong>OS 이벤트 자동 연동</strong></li>
+    <li><strong>Mutex</strong>: 소유권 있음. 소유자 크래시 → WAIT_ABANDONED로 복구 가능. 재귀 획득 OK</li>
+    <li><strong>Semaphore</strong>: 소유권 없음. 동시 접근 N개 제한. 누구나 Release</li>
+    <li><strong>Event Auto-reset</strong>: 하나만 통과시키고 즉시 reset → Job 분배</li>
+    <li><strong>Event Manual-reset</strong>: SetEvent 후 전원 통과, ResetEvent 전까지 유지 → 브로드캐스트</li>
+    <li><strong>PulseEvent</strong>: 신호 유실 레이스 있음 — 사용 금지</li>
+    <li>같은 프로세스 내 고빈도 락은 <strong>CS가 Mutex보다 ~20x 빠름</strong>. 커널 진입이 없어서</li>
+  </ul>
+</div>
+
+<div class="footer">
+  제프리 리처 Windows via C/C++ 9장 — 커널 객체 기반 스레드 동기화<br>
+  학습 경로: 6 → 8 → <strong>9</strong> → 7 → 13 → 18
+</div>
+
+</body>
+</html>

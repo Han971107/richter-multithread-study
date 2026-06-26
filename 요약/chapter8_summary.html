@@ -188,7 +188,7 @@
 <div class="info" style="margin-bottom: 25px;">
   <strong>진행 상황</strong>
   <div class="progress">
-    <div class="progress-bar" style="width: 100%;">섹션 5/5 완료 → 종합 Q&amp;A</div>
+    <div class="progress-bar" style="width: 100%;">섹션 5/5 + 종합 Q&amp;A + 과제 3개 완료</div>
   </div>
   <ul style="margin: 8px 0 0 0;">
     <li><span class="badge badge-good">✓</span> 섹션 1. Race Condition · 캐시 라인 · volatile</li>
@@ -196,7 +196,8 @@
     <li><span class="badge badge-good">✓</span> 섹션 3. Critical Section + 데드락 심화</li>
     <li><span class="badge badge-good">✓</span> 섹션 4. SRWLOCK</li>
     <li><span class="badge badge-good">✓</span> 섹션 5. Condition Variable</li>
-    <li>종합 Q&A + 과제 3개</li>
+    <li><span class="badge badge-good">✓</span> 종합 Q&A Q1~Q10</li>
+    <li><span class="badge badge-good">✓</span> 종합 과제 3개</li>
   </ul>
 </div>
 
@@ -237,6 +238,10 @@
     <li><a href="#s5-4">5-4. Wake vs WakeAll</a></li>
     <li><a href="#s5-ex">5-5. 미니 실습: Job Queue</a></li>
     <li><a href="#s5-quiz">5-6. 퀴즈 Q-a/b/c</a></li>
+    <li><a href="#qa">종합 Q&amp;A Q1~Q10</a></li>
+    <li><a href="#ex1">종합 과제 1: RefCounted</a></li>
+    <li><a href="#ex2">종합 과제 2: 데드락 수정</a></li>
+    <li><a href="#ex3">종합 과제 3: CV 완료 대기</a></li>
   </ul>
 </div>
 
@@ -1563,10 +1568,217 @@ WakeAllConditionVariable(&amp;g_cv);   <span class="comment">// 잠든 Worker들
   </ul>
 </div>
 
-<div class="footer">
-  Chapter 8 — 섹션 1~5 완료 + 데드락 심화 + 캐시/store buffer/MESI 심화 복습 — 다음: 종합 Q&amp;A<br>
-  마지막 업데이트: 2026-06-06
+<!-- ============================== 종합 Q&A ============================== -->
+<h2 style="color:#fff; background:#6610f2; padding:18px 24px; border-left:none; border-radius:6px;">
+  종합 Q&amp;A — Q1~Q10
+</h2>
+
+<div class="section" id="qa">
+
+  <div class="question">Q1. Windows VolatileRead/Write는 원자적인가? volatile이 동기화에 불충분한 이유 두 가지는?</div>
+  <div class="answer-box">
+    <strong>원자적이다</strong> — 정렬된 단순 read/write는 Windows가 원자성 보장.<br>
+    <strong>불충분한 이유:</strong>
+    <ol style="margin:0;">
+      <li>RMW를 원자화하지 못함 (increment 등 여전히 깨짐)</li>
+      <li>메모리 순서(ordering) 보장 없음 — CPU 명령 재배치 차단 불가</li>
+    </ol>
+  </div>
+  <div class="warning">
+    <strong>수정된 오해:</strong> volatile은 "RAM에서 직접 읽는다"가 아님. <strong>컴파일러에게 레지스터 재사용 금지</strong>를 지시할 뿐. load 명령어 이후 L1/L2/RAM 중 어디서 가져올지는 CPU 하드웨어가 결정 — volatile 무관.
+  </div>
+
+  <div class="question">Q2. Critical Section과 Mutex 차이 두 가지는?</div>
+  <div class="answer-box">
+    <ol style="margin:0;">
+      <li>CS = 유저 모드 객체 / Mutex = 커널 객체 → 무경합 속도 CS ~25ns vs Mutex ~1000ns</li>
+      <li>CS = 스핀 후 커널 대기(Event 사용) / Mutex = 바로 커널 대기</li>
+    </ol>
+    <strong>추가:</strong> Mutex는 이름 부여 시 프로세스 간 공유 가능, CS는 불가. CS 내부는 Mutex가 아닌 <strong>Event 객체</strong>를 사용.
+  </div>
+
+  <div class="question">Q3. SRWLOCK이 재귀를 지원하지 않는 이유는?</div>
+  <div class="answer-box">
+    SRWLOCK은 <strong>8바이트 정수 1개</strong>로 구현. 소유 스레드 ID를 저장할 공간이 없음. CS는 소유 스레드 ID 필드가 있어 재진입 감지 가능. <strong>크기와 단순성을 위한 의도적 트레이드오프.</strong>
+  </div>
+
+  <div class="question">Q4. Condition Variable 대기를 if가 아닌 while로 써야 하는 이유는?</div>
+  <div class="answer-box">
+    <strong>Spurious wakeup</strong> — 아무도 깨우지 않았는데 스레드가 깨어날 수 있음. OS/하드웨어 특성으로 피할 수 없음. while이면 깨어날 때마다 조건 재확인 → 안전.
+  </div>
+
+  <div class="question">Q5. <code>while (g_jobs.empty() &amp;&amp; !g_shutdown)</code> — shutdown=true, 큐에 잡 있을 때 동작은?</div>
+  <div class="answer-box">
+    <code>&amp;&amp;</code>이므로 하나만 false여도 탈출. <code>!g_shutdown = false</code> → 즉시 탈출 → 큐에 잡이 있으므로 처리 계속. <strong>shutdown 걸려도 남은 작업은 끝까지 처리하고 종료.</strong>
+  </div>
+
+  <div class="question">Q6. WakeConditionVariable 대신 WakeAll을 매 push마다 쓰면?</div>
+  <div class="answer-box">
+    <strong>Thundering herd</strong> — 워커 전체가 깨어나 락 경합 후 1개만 처리, 나머지는 다시 잠듦. processedCount는 동일하지만 불필요한 컨텍스트 스위치 폭증 → 성능 저하.
+  </div>
+
+  <div class="question">Q7. CAS 루프에서 do-while을 쓰는 이유 두 가지는?</div>
+  <div class="answer-box">
+    <ol style="margin:0;">
+      <li>코드 중복 회피 — while로 쓰면 진입 전 한 번, 실패 시 또 한 번 같은 두 줄 반복 필요</li>
+      <li>"최소 한 번 시도" 시맨틱과 일치 — CAS의 본질이 "일단 해보고 실패하면 재시도"</li>
+    </ol>
+  </div>
+
+  <div class="question">Q8. InterlockedExchangeAdd를 4스레드가 각 100만 번 호출하는 것보다 빠른 방법은?</div>
+  <div class="answer-box">
+    <strong>로컬 배칭</strong> — 각 스레드가 로컬 변수로 100만 번 더하고 마지막에 ExchangeAdd 1번. LOCK INC 400만 번 → 4번으로 감소. 핵심은 명령어 비용보다 <strong>캐시 라인 ping-pong</strong> 감소.
+  </div>
+
+  <div class="question">Q9. 아래 코드의 문제점은?</div>
+<pre><code>AcquireSRWLockShared(&amp;g_lock);
+int v = g_config.value;
+if (v == 0) {
+    AcquireSRWLockExclusive(&amp;g_lock);  // ← 문제
+    g_config.value = 1;
+    ReleaseSRWLockExclusive(&amp;g_lock);
+}
+ReleaseSRWLockShared(&amp;g_lock);</code></pre>
+  <div class="answer-box">
+    <strong>Self-deadlock</strong> — 읽기 락을 잡은 채로 쓰기 락 요청. SRWLOCK은 "읽기 락 보유자가 다 나가야 쓰기 허용"인데, 내가 읽기 락을 들고 있어 영원히 대기.<br><br>
+    <strong>해결:</strong> 읽기 락 먼저 놓고 → 쓰기 락 잡고 → <strong>재검사 필수</strong> (그 사이 다른 스레드가 바꿨을 수 있음).
+  </div>
+
+  <div class="question">Q10. 데드락 4조건과 가장 현실적으로 깨기 쉬운 조건은?</div>
+  <div class="answer-box">
+    <strong>4조건:</strong> 상호 배제 / 보유 후 대기 / 비선점 / <strong>순환 대기</strong><br>
+    1, 3은 락의 본질이라 못 깸. <strong>가장 쉬운 건 4번 순환 대기</strong> — 모든 스레드가 락을 같은 순서로 잡으면 사이클 불가 = <strong>Lock Ordering</strong>.
+  </div>
+
 </div>
+
+<!-- ============================== 종합 과제 ============================== -->
+<h2 style="color:#fff; background:#6610f2; padding:18px 24px; border-left:none; border-radius:6px;">
+  종합 과제
+</h2>
+
+<div class="section" id="ex1">
+  <h2>과제 1 — 스레드 안전 레퍼런스 카운터</h2>
+  <div class="info">락 없이 <code>AddRef()</code> / <code>Release()</code> 구현. Release에서 0이 되면 <code>delete this</code>.</div>
+<pre><code><span class="keyword">class</span> RefCounted
+{
+<span class="keyword">public</span>:
+    RefCounted() : m_count(<span class="number">1</span>) {}
+
+    <span class="type">LONG</span> AddRef()
+    {
+        <span class="keyword">return</span> InterlockedIncrement(&amp;m_count);
+    }
+
+    <span class="type">LONG</span> Release()
+    {
+        <span class="type">LONG</span> newCount = InterlockedDecrement(&amp;m_count);
+        <span class="keyword">if</span> (newCount == <span class="number">0</span>) {
+            <span class="keyword">delete</span> <span class="keyword">this</span>;
+        }
+        <span class="keyword">return</span> newCount;
+    }
+
+<span class="keyword">private</span>:
+    <span class="type">LONG</span> m_count;
+};</code></pre>
+  <div class="answer-box">
+    <strong>핵심:</strong> <code>InterlockedDecrement</code>는 감소 + 반환이 원자적. newCount == 0을 받은 스레드는 전 세계에서 하나뿐 → 안전하게 delete. <code>if (m_count &lt; 0)</code>은 틀림 — over-release 버그를 숨기게 됨.
+  </div>
+</div>
+
+<div class="section" id="ex2">
+  <h2>과제 2 — 데드락 코드 수정</h2>
+  <div class="warning">
+    <strong>원인:</strong> Transfer는 Account→Log 순서, PrintLog는 Log→Account 순서 → ABBA 패턴 → 순환 대기 → 데드락.
+  </div>
+<pre><code><span class="comment">// ❌ 기존 — PrintLog가 반대 순서</span>
+<span class="keyword">void</span> PrintLog() {
+    EnterCriticalSection(&amp;g_csLog);
+    EnterCriticalSection(&amp;g_csAccount);  <span class="comment">// Transfer와 역순 → ABBA</span>
+    ...
+}
+
+<span class="comment">// ✅ 수정 — 두 함수 모두 Log → Account 순서로 통일</span>
+<span class="keyword">void</span> Transfer(<span class="type">int</span> amount) {
+    EnterCriticalSection(&amp;g_csLog);
+    EnterCriticalSection(&amp;g_csAccount);
+    g_balance -= amount;
+    g_log.push_back(amount);
+    LeaveCriticalSection(&amp;g_csAccount);
+    LeaveCriticalSection(&amp;g_csLog);
+}
+
+<span class="keyword">void</span> PrintLog() {
+    EnterCriticalSection(&amp;g_csLog);
+    EnterCriticalSection(&amp;g_csAccount);
+    <span class="keyword">for</span> (<span class="keyword">auto</span>&amp; entry : g_log) cout &lt;&lt; entry &lt;&lt; endl;
+    LeaveCriticalSection(&amp;g_csAccount);
+    LeaveCriticalSection(&amp;g_csLog);
+}</code></pre>
+  <div class="tip">Leave는 Enter의 역순(LIFO)으로 — 정확성엔 영향 없지만 코드 일관성.</div>
+</div>
+
+<div class="section" id="ex3">
+  <h2>과제 3 — Condition Variable로 워커 완료 대기</h2>
+  <div class="info">Worker 3개가 각자 랜덤 시간 작업 후 카운터 증가 + WakeAll. Main은 카운터가 3이 될 때까지 CV 대기.</div>
+<pre><code><span class="type">CRITICAL_SECTION</span> g_cs;
+<span class="type">CONDITION_VARIABLE</span> g_cv;
+<span class="type">int</span> g_doneCount = <span class="number">0</span>;
+
+<span class="type">unsigned</span> __stdcall WorkerThreadProc(<span class="type">void</span>*) {
+    Sleep(rand() % <span class="number">5</span> + <span class="number">1</span>);
+    EnterCriticalSection(&amp;g_cs);
+    g_doneCount++;
+    LeaveCriticalSection(&amp;g_cs);
+    WakeAllConditionVariable(&amp;g_cv);
+    <span class="keyword">return</span> <span class="number">0</span>;
+}
+
+<span class="type">int</span> main() {
+    srand((<span class="type">unsigned</span>)time(NULL));
+    InitializeCriticalSection(&amp;g_cs);
+    InitializeConditionVariable(&amp;g_cv);
+
+    <span class="keyword">constexpr</span> <span class="type">int</span> workerCount = <span class="number">3</span>;
+    <span class="type">HANDLE</span> handles[workerCount] = {};
+    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; workerCount; ++i)
+        handles[i] = (<span class="type">HANDLE</span>)_beginthreadex(NULL, <span class="number">0</span>, WorkerThreadProc, nullptr, <span class="number">0</span>, NULL);
+
+    EnterCriticalSection(&amp;g_cs);
+    <span class="keyword">while</span> (g_doneCount &lt; workerCount) {
+        SleepConditionVariableCS(&amp;g_cv, &amp;g_cs, INFINITE);
+    }
+    LeaveCriticalSection(&amp;g_cs);
+    cout &lt;&lt; <span class="string">"모두 완료"</span> &lt;&lt; endl;
+
+    WaitForMultipleObjects(workerCount, handles, TRUE, INFINITE);
+    <span class="keyword">for</span> (<span class="type">int</span> i = <span class="number">0</span>; i &lt; workerCount; ++i) CloseHandle(handles[i]);
+    <span class="keyword">return</span> <span class="number">0</span>;
+}</code></pre>
+  <div class="answer-box">
+    Job Queue와 역할이 뒤집힘 — Job Queue는 Main이 깨우고 Worker가 기다림. 이 과제는 <strong>Worker가 깨우고 Main이 기다림.</strong> CV 패턴은 동일.
+  </div>
+</div>
+
+<div class="section" style="background:#6610f2; color:#fff;">
+  <h2 style="color:#fff; background:transparent; border-left:none; padding-left:0;">Ch.8 완료 — 핵심 요약</h2>
+  <table style="color:#2c3e50;">
+    <tr><th>도구</th><th>언제</th><th>핵심 제약</th></tr>
+    <tr><td>Interlocked</td><td>변수 1개 원자 연산</td><td>복합 불변식 불가</td></tr>
+    <tr><td>Critical Section</td><td>같은 프로세스, 복합 불변식</td><td>재귀 가능, 락 안에서 Sleep 금지</td></tr>
+    <tr><td>SRWLOCK</td><td>read &gt;&gt; write</td><td>재귀 불가, shared→exclusive 업그레이드 금지</td></tr>
+    <tr><td>Condition Variable</td><td>조건 충족까지 대기</td><td>항상 while, WakeAll로 종료 신호</td></tr>
+  </table>
+</div>
+
+<div class="footer">
+  Chapter 8 완료 — 섹션 1~5 + 데드락 심화 + 캐시/store buffer/MESI 심화 복습 + 종합 Q&amp;A + 과제 3개<br>
+  마지막 업데이트: 2026-06-18
+</div>
+
+</body>
+</html>
 
 </body>
 </html>
